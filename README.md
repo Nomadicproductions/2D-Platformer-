@@ -17,4 +17,3 @@ A simple level-based 2D platformer designed for mobile devices. Built with HTML5
 - Reach the **goal tile** to finish each level.
 - Avoid enemies and spikes, and collect any special items along the way.
 
-This project is a great foundation for expanding into a full platformer with new levels, power-ups, and story elements.
