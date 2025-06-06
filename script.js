@@ -1,3 +1,5 @@
+// v39: micro-jump now always triggers when left/right is pressed while snapped, even at higher power
+
 const tileSize = 32;
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -10,12 +12,11 @@ document.addEventListener("touchstart", function (e) {
 
 // === LEVELS ===
 const levels = [
-  // Level 1 — original
   [
     "##############################",
     "#                            #",
     "#                            #",
-    "#                            #",
+    "#         aAaaaaaa   aB      #",
     "#                            #",
     "#                     $      #",
     "#                           F#",
@@ -35,104 +36,31 @@ const levels = [
     "#                            #",
     "#                 $          #",
     "#               ######       #",
+    "#      bA     #              #",
+    "#      b                     #",
     "#                            #",
-    "#         $                  #",
-    "#       ######               #",
-    "#                     $      #",
-    "#                            #",
+    "#              #             #",
+    "#      bB        #           #",
     "#S                      $    #",
     "##############################"
-  ],
-  // Level 2 — blank 70 tall x 100 wide, bordered, ready for editing
-  [
-    "####################################################################################################",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                        3                                                         #",
-    "#                             ############################                                         #",
-    "#                                                                                                  #",
-    "#                                                            ###########                           #",
-    "#                                                         #                                        #",
-    "#                                                 2                                                #",
-    "#                                        ####################                                      #",
-    "#                                                                                                  #",
-    "#                               #######                                                            #",
-    "#                                       #                                                          #",
-    "#                                               1                                                  #",
-    "#                                       ####################                                       #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                               -------   ############             #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                              #########                           #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                    #########                                     #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                                                                                                  #",
-    "#                              $              #######        @@@@@                                 #",
-    "#                                                                                                  #",
-    "# S           !       $        #        !               x                                          #",
-    "####################################################################################################"
   ]
 ];
 
 // === CONTROL CHARACTERS ===
 const tileColors = {
-  '#': '#444',         // Solid block
-  '-': '#b5651d',      // Moving platform
-  '@': '#ad00ad',      // Spinning platform
-  ' ': '#aee7ff',      // Empty space
-  'S': '#0f0',         // Start position
-  'F': '#ff9800',      // Finish (orange for clarity)
-  '$': '#ff0',         // Coin
-  'x': '#999',         // Scam coin
-  '1': '#e74c3c',      // Enemy type 1
-  '2': '#27ae60',      // Enemy type 2
-  '3': '#2980b9',      // Enemy type 3
-  '!': '#fff'          // Text trigger
+  '#': '#444',
+  '-': '#b5651d',
+  '@': '#ad00ad',
+  ' ': '#aee7ff',
+  'S': '#0f0',
+  'F': '#ff9800',
+  '$': '#ff0',
+  'x': '#999',
+  '1': '#e74c3c',
+  '2': '#27ae60',
+  '3': '#2980b9',
+  '!': '#fff',
+  'a': '#0cf', 'b': '#f0c', 'c': '#0f8', 'd': '#fa0', 'e': '#0fa', 'f': '#a0f', 'g': '#8a0', 'h': '#08a', 'i': '#a80', 'j': '#808'
 };
 
 const player = {
@@ -155,11 +83,82 @@ let cameraY = 0;
 let coins = [];
 let scamCoins = [];
 
+// === MOVING PLATFORM SYSTEM ===
+const platformIDs = 'abcdefghij'.split('');
+const endpointAChar = id => id + 'A';
+const endpointBChar = id => id + 'B';
+let movingPlatforms = [];
+
+function scanMovingPlatforms() {
+  movingPlatforms = [];
+  for (let id of platformIDs) {
+    let aPos = null, bPos = null, length = 0, vertical = false;
+    // Find endpoints
+    for (let y = 0; y < level.length; y++) {
+      for (let x = 0; x < level[y].length; x++) {
+        if (level[y].substr(x, 2) === endpointAChar(id)) aPos = {x, y};
+        if (level[y].substr(x, 2) === endpointBChar(id)) bPos = {x, y};
+      }
+    }
+    if (!aPos || !bPos) continue;
+    vertical = (aPos.x === bPos.x);
+    // Count length
+    if (vertical) {
+      length = 0;
+      for (let y = Math.min(aPos.y, bPos.y)+1; y < Math.max(aPos.y, bPos.y); y++)
+        if (level[y][aPos.x] === id) length++;
+    } else {
+      length = 0;
+      for (let x = Math.min(aPos.x, bPos.x)+2; x < Math.max(aPos.x, bPos.x); x++)
+        if (level[aPos.y][x] === id) length++;
+    }
+    if (length === 0) continue;
+    movingPlatforms.push({
+      id,
+      vertical,
+      aPos, bPos,
+      length,
+      t: 0,
+      timer: 0,
+      direction: 1,
+      pos: vertical ? aPos.y+1 : aPos.x+2,
+      lastPos: vertical ? aPos.y+1 : aPos.x+2 // initialize
+    });
+  }
+}
+
+function updateMovingPlatforms(delta) {
+  for (let p of movingPlatforms) {
+    p.lastPos = p.pos; // store old pos for delta calculation
+    const waitTime = 3000, moveTime = 5000;
+    if (p.t === 0) {
+      p.timer += delta;
+      p.pos = p.vertical ? p.aPos.y+1 : p.aPos.x+2;
+      if (p.timer >= waitTime) { p.direction = 1; p.timer = 0; p.t = 0.0001; }
+    } else if (p.t === 1) {
+      p.timer += delta;
+      p.pos = p.vertical ? p.bPos.y-p.length : p.bPos.x-p.length;
+      if (p.timer >= waitTime) { p.direction = -1; p.timer = 0; p.t = 0.9999; }
+    } else {
+      let progress = (delta / moveTime) * p.direction;
+      p.t += progress;
+      if (p.t >= 1) { p.t = 1; p.timer = 0; }
+      else if (p.t <= 0) { p.t = 0; p.timer = 0; }
+      if (p.vertical)
+        p.pos = (1-p.t)*(p.aPos.y+1) + p.t*(p.bPos.y-p.length);
+      else
+        p.pos = (1-p.t)*(p.aPos.x+2) + p.t*(p.bPos.x-p.length);
+    }
+  }
+}
+
+// === SPINNING PLATFORM SYSTEM ===
 let spinningState = {
   time: 0,
   flipping: false,
   flipAngle: 0
 };
+let fallingThroughSpin = false;
 
 function scanCoins() {
   coins = [];
@@ -183,7 +182,7 @@ function resetPlayerToStart() {
         player.grounded = false;
         cameraX = 0;
         cameraY = 0;
-        // coinCount is NOT reset here!
+        fallingThroughSpin = false;
         return;
       }
     }
@@ -198,11 +197,14 @@ function loadLevel(n) {
   level = levels[currentLevel];
   resetPlayerToStart();
   scanCoins();
+  scanMovingPlatforms();
   spinningState = { time: 0, flipping: false, flipAngle: 0 };
+  fallingThroughSpin = false;
 }
 
 resetPlayerToStart();
 scanCoins();
+scanMovingPlatforms();
 
 const keys = { left: false, right: false, jump: false };
 
@@ -252,9 +254,12 @@ function updateSpinningState(delta) {
     spinningState.flipping = true;
     spinningState.flipAngle = 0;
     spinningState.time = 0;
+    if (isPlayerOnAnySpinningPlatform(player.x, player.y + player.height + 1)) {
+      fallingThroughSpin = true;
+    }
   }
   if (spinningState.flipping) {
-    spinningState.flipAngle += Math.PI / 10;
+    spinningState.flipAngle += Math.PI / 30;
     if (spinningState.flipAngle >= Math.PI) {
       spinningState.flipping = false;
       spinningState.flipAngle = 0;
@@ -264,57 +269,10 @@ function updateSpinningState(delta) {
 }
 
 function isSpinningPlatformSolid() {
-  // Not solid during flip (0.5s every 3s)
-  return !spinningState.flipping;
-}
-
-let wasOnSpinning = false;
-
-function updatePlayer() {
-  player.dx = 0;
-  if (keys.left) player.dx = -player.speed;
-  if (keys.right) player.dx = player.speed;
-  player.dy += 0.4;
-
-  // --- X Axis ---
-  player.x += player.dx;
-  if (checkCollision(player.x, player.y)) player.x -= player.dx;
-
-  // --- Y Axis ---
-  player.y += player.dy;
-
-  let collided = checkCollision(player.x, player.y);
-  let onSpinningNow = isPlayerOnSpinningPlatform(player.x, player.y);
-
-  // If player was on spinning platform and it just became non-solid, make player fall through
-  if (wasOnSpinning && !onSpinningNow && !isSpinningPlatformSolid()) {
-    collided = false;
-  }
-
-  if (collided) {
-    player.y -= player.dy;
-    if (player.dy > 0) player.grounded = true;
-    player.dy = 0;
-  } else {
-    player.grounded = false;
-  }
-
-  wasOnSpinning = onSpinningNow && isSpinningPlatformSolid();
-
-  // Coin logic
-  collectCoin(coins, '$', () => { player.coinCount++; });
-  collectCoin(scamCoins, 'x', () => {
-    if (player.coinCount > 0) {
-      player.coinCount -= Math.floor(Math.random() * player.coinCount) + 1;
-      if (player.coinCount < 0) player.coinCount = 0;
-    }
-  });
-
-  checkFinish();
+  return !spinningState.flipping && !fallingThroughSpin;
 }
 
 function checkCollision(x, y) {
-  // Checks for solid '#' and solid '@'
   const corners = [
     [x, y],
     [x + player.width, y],
@@ -329,18 +287,159 @@ function checkCollision(x, y) {
       if (tile === '#') return true;
       if (tile === '@' && isSpinningPlatformSolid()) return true;
     }
+    for (let p of movingPlatforms) {
+      let px, py, w, h;
+      if (p.vertical) {
+        px = p.aPos.x * tileSize;
+        py = p.pos * tileSize;
+        w = tileSize; h = p.length * tileSize;
+      } else {
+        px = p.pos * tileSize;
+        py = p.aPos.y * tileSize;
+        w = p.length * tileSize; h = tileSize;
+      }
+      if (
+        cx >= px && cx < px + w &&
+        cy >= py && cy < py + h
+      ) {
+        return true;
+      }
+    }
   }
   return false;
 }
 
+// --- PLATFORM RIDING HELPERS ---
+let microJumpActive = false; // Tracks if the micro-jump is in progress
+
+function getPlayerStandingPlatform() {
+  for (let p of movingPlatforms) {
+    let px, py, w, h;
+    if (p.vertical) {
+      px = p.aPos.x * tileSize;
+      py = p.pos * tileSize;
+      w = tileSize;
+      h = p.length * tileSize;
+      const platformTop = py;
+      if (
+        player.x + player.width > px &&
+        player.x < px + w &&
+        Math.abs((player.y + player.height) - platformTop) < 4
+      ) {
+        return {p, px, py, w, h, vertical: true, platformTop};
+      }
+    } else {
+      px = p.pos * tileSize;
+      py = p.aPos.y * tileSize;
+      w = p.length * tileSize;
+      h = tileSize;
+      const platformTop = py;
+      if (
+        player.x + player.width > px &&
+        player.x < px + w &&
+        Math.abs((player.y + player.height) - platformTop) < 4
+      ) {
+        return {p, px, py, w, h, vertical: false, platformTop};
+      }
+    }
+  }
+  return null;
+}
+
+// --- Player update with riding, snapping, and micro-jump logic ---
+function updatePlayer() {
+  player.dx = 0;
+  if (keys.left) player.dx = -player.speed;
+  if (keys.right) player.dx = player.speed;
+
+  // Gravity
+  player.dy += 0.4;
+
+  // Move horizontally
+  player.x += player.dx;
+  if (checkCollision(player.x, player.y)) player.x -= player.dx;
+
+  // Move vertically
+  player.y += player.dy;
+  let collided = checkCollision(player.x, player.y);
+
+  if (collided) {
+    player.y -= player.dy;
+    if (player.dy > 0) player.grounded = true;
+    player.dy = 0;
+  } else {
+    player.grounded = false;
+  }
+
+  // --- PLATFORM RIDING PHYSICS ---
+  let riding = getPlayerStandingPlatform();
+  if (riding) {
+    let {p, px, py, w, h, vertical, platformTop} = riding;
+    let delta;
+    if (vertical) {
+      delta = (p.pos - p.lastPos) * tileSize;
+      player.y += delta;
+    } else {
+      delta = (p.pos - p.lastPos) * tileSize;
+      player.x += delta;
+    }
+
+    // --- SNAPPING LOGIC & MICRO-JUMP ---
+    // Only snap vertically if NOT pressing jump (do not snap if already in air/jumping)
+    let pressingMovement = !player.grounded;
+    if (!pressingMovement) {
+      // Snap vertically ONLY (never X)
+      player.y = platformTop - player.height;
+      player.dy = 0;
+      player.grounded = true;
+
+      // MICRO-JUMP: allow left/right to break snap
+      if ((keys.left || keys.right) && !keys.jump && !microJumpActive) {
+        player.dy = -3.5; // Increase this value for more "micro-jump" effect
+        player.grounded = false;
+        microJumpActive = true;
+      }
+      // Once micro-jump triggers, grounded will be false, so this block won't run again until landed
+    } else {
+      microJumpActive = false; // Reset
+    }
+  } else {
+    microJumpActive = false; // Reset
+  }
+
+  if (fallingThroughSpin) {
+    if (!isPlayerOnAnySpinningPlatform(player.x, player.y + player.height / 2)) {
+      fallingThroughSpin = false;
+    }
+  }
+
+  collectCoin(coins, '$', () => { player.coinCount++; });
+  collectCoin(scamCoins, 'x', () => {
+    if (player.coinCount > 0) {
+      player.coinCount -= Math.floor(Math.random() * player.coinCount) + 1;
+      if (player.coinCount < 0) player.coinCount = 0;
+    }
+  });
+
+  checkFinish();
+}
+
 function isPlayerOnSpinningPlatform(x, y) {
-  // Check if player's feet are on a spinning platform tile
   const tx1 = Math.floor(x / tileSize);
   const tx2 = Math.floor((x + player.width - 1) / tileSize);
   const ty = Math.floor((y + player.height) / tileSize);
   return (
     (level[ty] && (level[ty][tx1] === '@' || level[ty][tx2] === '@')) &&
-    isSpinningPlatformSolid()
+    !spinningState.flipping
+  );
+}
+
+function isPlayerOnAnySpinningPlatform(x, y) {
+  const tx1 = Math.floor(x / tileSize);
+  const tx2 = Math.floor((x + player.width - 1) / tileSize);
+  const ty = Math.floor(y / tileSize);
+  return (
+    (level[ty] && (level[ty][tx1] === '@' || level[ty][tx2] === '@'))
   );
 }
 
@@ -356,9 +455,17 @@ function checkFinish() {
   }
 }
 
-// === OPTIMIZED DRAW LEVEL: VIEWPORT CULLING ===
 function drawLevel() {
-  // Calculate visible bounds
+  for (let p of movingPlatforms) {
+    ctx.fillStyle = tileColors[p.id] || "#0cf";
+    let px = p.vertical ? p.aPos.x * tileSize - cameraX : p.pos * tileSize - cameraX;
+    let py = p.vertical ? p.pos * tileSize - cameraY : p.aPos.y * tileSize - cameraY;
+    ctx.fillRect(px, py, p.vertical ? tileSize : p.length * tileSize, p.vertical ? p.length * tileSize : tileSize);
+    ctx.fillStyle = "#0ff";
+    ctx.fillRect(p.aPos.x * tileSize - cameraX, p.aPos.y * tileSize - cameraY, tileSize, tileSize);
+    ctx.fillRect(p.bPos.x * tileSize - cameraX, p.bPos.y * tileSize - cameraY, tileSize, tileSize);
+  }
+
   const tilesWide = Math.ceil(canvas.width / tileSize);
   const tilesHigh = Math.ceil(canvas.height / tileSize);
   const startCol = Math.max(0, Math.floor(cameraX / tileSize));
@@ -367,23 +474,41 @@ function drawLevel() {
   const endRow = Math.min(level.length, startRow + tilesHigh + 2);
 
   for (let y = startRow; y < endRow; y++) {
-    for (let x = startCol; x < endCol; x++) {
-      const char = level[y][x];
-      if (char === '@' && spinningState.flipping) {
-        // Draw flipping platform with rotation
+    let x = startCol;
+    while (x < endCol) {
+      let char = level[y][x];
+      if (
+        platformIDs.includes(char) ||
+        platformIDs.some(id => level[y].substr(x, 2) === endpointAChar(id) || level[y].substr(x, 2) === endpointBChar(id))
+      ) {
+        x++;
+        continue;
+      }
+      if (char === '@') {
+        let xStart = x;
+        while (x < endCol && level[y][x] === '@') x++;
+        let xEnd = x - 1;
+        let groupLength = xEnd - xStart + 1;
+        const centerX = (xStart + xEnd + 1) / 2 * tileSize - cameraX;
+        const centerY = y * tileSize + tileSize / 2 - cameraY;
         ctx.save();
-        ctx.translate(
-          x * tileSize - cameraX + tileSize / 2,
-          y * tileSize - cameraY + tileSize / 2
+        ctx.translate(centerX, centerY);
+        ctx.rotate(spinningState.flipping ? spinningState.flipAngle : 0);
+        ctx.fillStyle = tileColors['@'];
+        ctx.fillRect(
+          -(groupLength * tileSize) / 2,
+          -tileSize / 2,
+          groupLength * tileSize,
+          tileSize
         );
-        ctx.rotate(spinningState.flipAngle);
-        ctx.fillStyle = tileColors[char];
-        ctx.fillRect(-tileSize / 2, -tileSize / 2, tileSize, tileSize);
         ctx.restore();
-      } else {
+      } else if (char !== ' ') {
         const color = tileColors[char] || '#000';
         ctx.fillStyle = color;
         ctx.fillRect(x * tileSize - cameraX, y * tileSize - cameraY, tileSize, tileSize);
+        x++;
+      } else {
+        x++;
       }
     }
   }
@@ -444,6 +569,7 @@ function gameLoop() {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   updateSpinningState(delta);
+  updateMovingPlatforms(delta);
   updatePlayer();
   updateCamera();
   drawLevel();
@@ -452,4 +578,4 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
-gameLoop();
+gameLoop(
