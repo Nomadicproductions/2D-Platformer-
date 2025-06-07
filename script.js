@@ -34,15 +34,14 @@ const levels = [
     "#                            #",
     "#                 $          #",
     "#               ######       #",
-    "#   bbbbA     #              #",
+    "#      bA     #              #",
+    "#      b                     #",
     "#                            #",
-    "#   bbbbb                    #",
     "#              #             #",
-    "#   bbbbB        #           #",
+    "#      bB        #           #",
     "#S                      $    #",
     "##############################"
   ],
-  // --- Level 2 (added as requested) ---
   [
     "####################################################################################################",
     "#                                                                                                  #",
@@ -240,20 +239,19 @@ function scanMovingPlatforms() {
     }
     if (!aPos || !bPos) continue;
     vertical = (aPos.x === bPos.x);
-    // Count length
+
     if (vertical) {
-      length = 0;
-      for (let y = Math.min(aPos.y, bPos.y)+1; y < Math.max(aPos.y, bPos.y); y++)
-        if (level[y][aPos.x] === id) length++;
+      length = 6; // always 6 tiles wide for vertical
     } else {
+      // Count contiguous id tiles in the row at aPos.y, between endpoints (exclusive)
+      let minX = Math.min(aPos.x, bPos.x);
+      let maxX = Math.max(aPos.x, bPos.x);
       length = 0;
-      // FIX: count all contiguous id tiles in a row starting at aPos.y, from min x to max x
-      for (let x = Math.min(aPos.x, bPos.x)+1; x < Math.max(aPos.x, bPos.x); x++) {
+      for (let x = minX + 1; x < maxX; x++) {
         if (level[aPos.y][x] === id) length++;
-        else break;
       }
+      if (length === 0) length = 1;
     }
-    if (length === 0) continue;
     movingPlatforms.push({
       id,
       vertical,
@@ -433,9 +431,10 @@ function checkCollision(x, y) {
     for (let p of movingPlatforms) {
       let px, py, w, h;
       if (p.vertical) {
-        px = p.aPos.x * tileSize;
+        px = (p.aPos.x - 2.5) * tileSize;
         py = p.pos * tileSize;
-        w = tileSize; h = p.length * tileSize;
+        w = 6 * tileSize;
+        h = p.length * tileSize;
       } else {
         px = p.pos * tileSize;
         py = p.aPos.y * tileSize;
@@ -459,9 +458,9 @@ function getPlayerStandingPlatform() {
   for (let p of movingPlatforms) {
     let px, py, w, h;
     if (p.vertical) {
-      px = p.aPos.x * tileSize;
+      px = (p.aPos.x - 2.5) * tileSize;
       py = p.pos * tileSize;
-      w = tileSize;
+      w = 6 * tileSize;
       h = p.length * tileSize;
       const platformTop = py;
       if (
@@ -601,12 +600,22 @@ function checkFinish() {
 function drawLevel() {
   for (let p of movingPlatforms) {
     ctx.fillStyle = tileColors[p.id] || "#0cf";
-    let px = p.vertical ? p.aPos.x * tileSize - cameraX : p.pos * tileSize - cameraX;
-    let py = p.vertical ? p.pos * tileSize - cameraY : p.aPos.y * tileSize - cameraY;
-    ctx.fillRect(px, py, p.vertical ? tileSize : p.length * tileSize, p.vertical ? p.length * tileSize : tileSize);
-    ctx.fillStyle = "#0ff";
-    ctx.fillRect(p.aPos.x * tileSize - cameraX, p.aPos.y * tileSize - cameraY, tileSize, tileSize);
-    ctx.fillRect(p.bPos.x * tileSize - cameraX, p.bPos.y * tileSize - cameraY, tileSize, tileSize);
+    if (p.vertical) {
+      // 6 tiles wide, centered on aPos.x
+      let px = (p.aPos.x - 2.5) * tileSize - cameraX;
+      let py = p.pos * tileSize - cameraY;
+      ctx.fillRect(px, py, 6 * tileSize, p.length * tileSize);
+      ctx.fillStyle = "#0ff";
+      ctx.fillRect((p.aPos.x - 2.5) * tileSize - cameraX, p.aPos.y * tileSize - cameraY, 6 * tileSize, tileSize);
+      ctx.fillRect((p.bPos.x - 2.5) * tileSize - cameraX, p.bPos.y * tileSize - cameraY, 6 * tileSize, tileSize);
+    } else {
+      let px = p.pos * tileSize - cameraX;
+      let py = p.aPos.y * tileSize - cameraY;
+      ctx.fillRect(px, py, p.length * tileSize, tileSize);
+      ctx.fillStyle = "#0ff";
+      ctx.fillRect(p.aPos.x * tileSize - cameraX, p.aPos.y * tileSize - cameraY, tileSize, tileSize);
+      ctx.fillRect(p.bPos.x * tileSize - cameraX, p.bPos.y * tileSize - cameraY, tileSize, tileSize);
+    }
   }
 
   const tilesWide = Math.ceil(canvas.width / tileSize);
