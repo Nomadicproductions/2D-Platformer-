@@ -241,7 +241,7 @@ function scanMovingPlatforms() {
     vertical = (aPos.x === bPos.x);
 
     if (vertical) {
-      length = 6; // always 6 tiles wide for vertical
+      length = 1; // Only 1 tile tall for vertical platforms, width is locked to 6 tiles
     } else {
       // Count contiguous id tiles in the row at aPos.y, between endpoints (exclusive)
       let minX = Math.min(aPos.x, bPos.x);
@@ -434,7 +434,7 @@ function checkCollision(x, y) {
         px = (p.aPos.x - 2.5) * tileSize;
         py = p.pos * tileSize;
         w = 6 * tileSize;
-        h = p.length * tileSize;
+        h = tileSize; // Only 1 tile tall for vertical platforms
       } else {
         px = p.pos * tileSize;
         py = p.aPos.y * tileSize;
@@ -461,7 +461,7 @@ function getPlayerStandingPlatform() {
       px = (p.aPos.x - 2.5) * tileSize;
       py = p.pos * tileSize;
       w = 6 * tileSize;
-      h = p.length * tileSize;
+      h = tileSize; // Only 1 tile tall for vertical platforms
       const platformTop = py;
       if (
         player.x + player.width > px &&
@@ -601,10 +601,10 @@ function drawLevel() {
   for (let p of movingPlatforms) {
     ctx.fillStyle = tileColors[p.id] || "#0cf";
     if (p.vertical) {
-      // 6 tiles wide, centered on aPos.x
+      // 6 tiles wide, always 1 tile tall
       let px = (p.aPos.x - 2.5) * tileSize - cameraX;
       let py = p.pos * tileSize - cameraY;
-      ctx.fillRect(px, py, 6 * tileSize, p.length * tileSize);
+      ctx.fillRect(px, py, 6 * tileSize, tileSize);
       ctx.fillStyle = "#0ff";
       ctx.fillRect((p.aPos.x - 2.5) * tileSize - cameraX, p.aPos.y * tileSize - cameraY, 6 * tileSize, tileSize);
       ctx.fillRect((p.bPos.x - 2.5) * tileSize - cameraX, p.bPos.y * tileSize - cameraY, 6 * tileSize, tileSize);
