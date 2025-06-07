@@ -1,6 +1,6 @@
 # 2D Platformer Game
 
-A simple level-based 2D platformer designed for mobile devices. Built with HTML5 and JavaScript, this game delivers smooth on-screen controls and intuitive gameplay optimized for touch screens.
+A simple level-based 2D platformer designed primarily for mobile devices. Built with HTML5 and JavaScript, this game delivers smooth on-screen controls and intuitive gameplay optimized for touch screens.
 
 ## Game Overview
 
