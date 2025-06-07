@@ -14,7 +14,7 @@ const levels = [
     "##############################",
     "#                            #",
     "#                            #",
-    "#                            #",
+    "#         aAaaaaaa   aB      #",
     "#                            #",
     "#                     $      #",
     "#                           F#",
@@ -35,8 +35,8 @@ const levels = [
     "#                 $          #",
     "#               ######       #",
     "#      bA     #              #",
+    "#      b                     #",
     "#                            #",
-    "#    bbbb                    #",
     "#              #             #",
     "#      bB        #           #",
     "#S                      $    #",
@@ -92,13 +92,13 @@ const levels = [
     "#                               #######                                                            #",
     "#                                       #                                                          #",
     "#                                               1                                                  #",
-    "#                                       ####################      bA                               #",
-    "#                                                               bbbb                               #",
+    "#                                       ####################                                       #",
     "#                                                                                                  #",
     "#                                                                                                  #",
     "#                                                                                                  #",
     "#                                                                                                  #",
-    "#                                                                 bB     ############              #",
+    "#                                                                                                  #",
+    "#                                                               -------   ############             #",
     "#                                                                                                  #",
     "#                                                                                                  #",
     "#                                                                                                  #",
@@ -247,8 +247,11 @@ function scanMovingPlatforms() {
         if (level[y][aPos.x] === id) length++;
     } else {
       length = 0;
-      for (let x = Math.min(aPos.x, bPos.x)+2; x < Math.max(aPos.x, bPos.x); x++)
+      // FIX: count all contiguous id tiles in a row starting at aPos.y, from min x to max x
+      for (let x = Math.min(aPos.x, bPos.x)+1; x < Math.max(aPos.x, bPos.x); x++) {
         if (level[aPos.y][x] === id) length++;
+        else break;
+      }
     }
     if (length === 0) continue;
     movingPlatforms.push({
