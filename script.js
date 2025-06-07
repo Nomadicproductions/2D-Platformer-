@@ -155,6 +155,72 @@ let cameraY = 0;
 let coins = [];
 let scamCoins = [];
 
+// === ENEMY SYSTEM ===
+let enemies = []; // Will contain {type, x, y, px, py, dir, patrolMin, patrolMax, speed}
+
+function scanEnemies() {
+  enemies = [];
+  for (let y = 0; y < level.length; y++) {
+    for (let x = 0; x < level[y].length; x++) {
+      const char = level[y][x];
+      if (char === '1' || char === '2') {
+        // Each enemy patrols horizontally for 3 tiles left/right unless blocked by a wall
+        let patrolMin = x, patrolMax = x;
+        // scan left
+        for (let dx = x - 1; dx >= x - 3 && dx >= 0; dx--) {
+          if (level[y][dx] !== ' ') break;
+          patrolMin = dx;
+        }
+        // scan right
+        for (let dx = x + 1; dx <= x + 3 && dx < level[y].length; dx++) {
+          if (level[y][dx] !== ' ') break;
+          patrolMax = dx;
+        }
+        enemies.push({
+          type: char,
+          x: x * tileSize,
+          y: y * tileSize,
+          px: x,
+          py: y,
+          dir: 1, // start moving right
+          patrolMin: patrolMin * tileSize,
+          patrolMax: patrolMax * tileSize,
+          speed: 1.2
+        });
+      }
+    }
+  }
+}
+
+function updateEnemies(delta) {
+  for (let enemy of enemies) {
+    // Patrol horizontally between patrolMin and patrolMax
+    enemy.x += enemy.dir * enemy.speed;
+    if (enemy.x < enemy.patrolMin) {
+      enemy.x = enemy.patrolMin;
+      enemy.dir = 1;
+    }
+    if (enemy.x > enemy.patrolMax) {
+      enemy.x = enemy.patrolMax;
+      enemy.dir = -1;
+    }
+    // (Optional advanced: add gravity/collision if needed later)
+  }
+}
+
+function drawEnemies() {
+  for (let enemy of enemies) {
+    ctx.fillStyle = tileColors[enemy.type] || "#000";
+    ctx.fillRect(enemy.x - cameraX, enemy.y - cameraY, tileSize, tileSize);
+    // Optionally, add a face or label for each enemy type
+    ctx.fillStyle = "#fff";
+    ctx.font = "16px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(enemy.type === '1' ? "S" : "D", enemy.x - cameraX + tileSize/2, enemy.y - cameraY + tileSize/2);
+  }
+}
+
 // === MOVING PLATFORM SYSTEM ===
 const platformIDs = 'abcdefghij'.split('');
 const endpointAChar = id => id + 'A';
@@ -270,6 +336,7 @@ function loadLevel(n) {
   resetPlayerToStart();
   scanCoins();
   scanMovingPlatforms();
+  scanEnemies();
   spinningState = { time: 0, flipping: false, flipAngle: 0 };
   fallingThroughSpin = false;
 }
@@ -277,6 +344,7 @@ function loadLevel(n) {
 resetPlayerToStart();
 scanCoins();
 scanMovingPlatforms();
+scanEnemies();
 
 const keys = { left: false, right: false, jump: false };
 
@@ -643,11 +711,13 @@ function gameLoop() {
   updateSpinningState(delta);
   updateMovingPlatforms(delta);
   updatePlayer();
+  updateEnemies(delta);
   updateCamera();
   drawLevel();
   drawPlayer();
+  drawEnemies();
   updateDebug();
   requestAnimationFrame(gameLoop);
 }
 
-gameLoop()
+gameLoop();
