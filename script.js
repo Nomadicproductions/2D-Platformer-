@@ -646,7 +646,7 @@ function handlePlayerEnemyCollision() {
       } else {
         // Side or bottom collision: penalize player
         fallingThroughAnyPlatform = true;
-        fallingThroughUntilY = player.y + player.height + 12; // Tune the +12 as needed
+        fallingThroughUntilY = player.y + player.height + 45; // Tune the +12 as needed
         let lost = Math.floor(player.coinCount * 0.4);
         player.coinCount -= lost;
         if (player.coinCount < 0) player.coinCount = 0;
