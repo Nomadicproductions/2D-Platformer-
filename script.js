@@ -155,23 +155,38 @@ let coins = [];
 let scamCoins = [];
 
 // === ENEMY SYSTEM ===
-let enemies = []; // Will contain {type, x, y, px, py, dir, patrolMin, patrolMax, speed}
+let enemies = []; // {type, x, y, px, py, dir, patrolMin, patrolMax, speed}
 
 /**
- * Find the leftmost and rightmost x tile coordinates of the platform
- * at (x, y). The platform is defined as contiguous non-space (' ') tiles
- * at that y row, supporting the enemy at (x, y) (so only on the same row).
+ * Find the patrol min and max x tile coordinates where enemy can safely walk,
+ * meaning there's ground (non-space) beneath at (x, y+1)
  */
-function findPlatformBounds(x, y, level) {
-  let left = x;
-  let right = x;
-  // Move left as far as possible while standing on a solid tile
-  while (left > 0 && level[y][left - 1] !== ' ') {
-    left--;
+function findPlatformPatrolBounds(x, y, level) {
+  let left = x, right = x;
+  // Move left
+  for (let lx = x; lx >= 0; lx--) {
+    // Is the tile below solid and this tile is empty (so enemy can stand here)?
+    if (
+      level[y+1] &&
+      level[y+1][lx] !== ' ' &&
+      level[y][lx] === ' '
+    ) {
+      left = lx;
+    } else if (lx !== x) {
+      break;
+    }
   }
-  // Move right as far as possible while standing on a solid tile
-  while (right < level[y].length - 1 && level[y][right + 1] !== ' ') {
-    right++;
+  // Move right
+  for (let rx = x; rx < level[y].length; rx++) {
+    if (
+      level[y+1] &&
+      level[y+1][rx] !== ' ' &&
+      level[y][rx] === ' '
+    ) {
+      right = rx;
+    } else if (rx !== x) {
+      break;
+    }
   }
   return { left, right };
 }
@@ -182,16 +197,15 @@ function scanEnemies() {
     for (let x = 0; x < level[y].length; x++) {
       const char = level[y][x];
       if (char === '1' || char === '2') {
-        // Find how far the enemy can patrol on this platform
-        // The enemy must remain on solid ground, so scan left/right on the *row* for contiguous ground
-        const { left, right } = findPlatformBounds(x, y, level);
+        // Find patrol bounds using ground below
+        const { left, right } = findPlatformPatrolBounds(x, y, level);
         enemies.push({
           type: char,
           x: x * tileSize,
           y: y * tileSize,
           px: x,
           py: y,
-          dir: 1, // start moving right
+          dir: 1,
           patrolMin: left * tileSize,
           patrolMax: right * tileSize,
           speed: 1.2
@@ -203,7 +217,6 @@ function scanEnemies() {
 
 function updateEnemies(delta) {
   for (let enemy of enemies) {
-    // Patrol horizontally between patrolMin and patrolMax
     enemy.x += enemy.dir * enemy.speed;
     if (enemy.x < enemy.patrolMin) {
       enemy.x = enemy.patrolMin;
@@ -213,7 +226,6 @@ function updateEnemies(delta) {
       enemy.x = enemy.patrolMax;
       enemy.dir = -1;
     }
-    // (Optional advanced: add gravity/collision if needed later)
   }
 }
 
@@ -221,7 +233,6 @@ function drawEnemies() {
   for (let enemy of enemies) {
     ctx.fillStyle = tileColors[enemy.type] || "#000";
     ctx.fillRect(enemy.x - cameraX, enemy.y - cameraY, tileSize, tileSize);
-    // Optionally, add a face or label for each enemy type
     ctx.fillStyle = "#fff";
     ctx.font = "16px Arial";
     ctx.textAlign = "center";
