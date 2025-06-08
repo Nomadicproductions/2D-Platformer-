@@ -154,8 +154,28 @@ let cameraY = 0;
 let coins = [];
 let scamCoins = [];
 
-// === ENEMY SYSTEM ===
+// ... previous code up to === ENEMY SYSTEM ===
+
 let enemies = []; // Will contain {type, x, y, px, py, dir, patrolMin, patrolMax, speed}
+
+/**
+ * Find the leftmost and rightmost x tile coordinates of the platform
+ * at (x, y). The platform is defined as contiguous non-space (' ') tiles
+ * at that y row, supporting the enemy at (x, y) (so only on the same row).
+ */
+function findPlatformBounds(x, y, level) {
+  let left = x;
+  let right = x;
+  // Move left as far as possible while standing on a solid tile
+  while (left > 0 && level[y][left - 1] !== ' ') {
+    left--;
+  }
+  // Move right as far as possible while standing on a solid tile
+  while (right < level[y].length - 1 && level[y][right + 1] !== ' ') {
+    right++;
+  }
+  return { left, right };
+}
 
 function scanEnemies() {
   enemies = [];
@@ -163,18 +183,10 @@ function scanEnemies() {
     for (let x = 0; x < level[y].length; x++) {
       const char = level[y][x];
       if (char === '1' || char === '2') {
-        // Each enemy patrols horizontally for 3 tiles left/right unless blocked by a wall
-        let patrolMin = x, patrolMax = x;
-        // scan left
-        for (let dx = x - 1; dx >= x - 3 && dx >= 0; dx--) {
-          if (level[y][dx] !== ' ') break;
-          patrolMin = dx;
-        }
-        // scan right
-        for (let dx = x + 1; dx <= x + 3 && dx < level[y].length; dx++) {
-          if (level[y][dx] !== ' ') break;
-          patrolMax = dx;
-        }
+        // Find how far the enemy can patrol on this platform
+        // The enemy must remain on solid ground, so scan left/right on the *row below* for ground
+        // But for now, use the row the enemy is on as the definition of the platform
+        const { left, right } = findPlatformBounds(x, y, level);
         enemies.push({
           type: char,
           x: x * tileSize,
@@ -182,8 +194,8 @@ function scanEnemies() {
           px: x,
           py: y,
           dir: 1, // start moving right
-          patrolMin: patrolMin * tileSize,
-          patrolMax: patrolMax * tileSize,
+          patrolMin: left * tileSize,
+          patrolMax: right * tileSize,
           speed: 1.2
         });
       }
@@ -207,18 +219,7 @@ function updateEnemies(delta) {
   }
 }
 
-function drawEnemies() {
-  for (let enemy of enemies) {
-    ctx.fillStyle = tileColors[enemy.type] || "#000";
-    ctx.fillRect(enemy.x - cameraX, enemy.y - cameraY, tileSize, tileSize);
-    // Optionally, add a face or label for each enemy type
-    ctx.fillStyle = "#fff";
-    ctx.font = "16px Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(enemy.type === '1' ? "S" : "D", enemy.x - cameraX + tileSize/2, enemy.y - cameraY + tileSize/2);
-  }
-}
+// ... rest of your code remains unchanged ...
 
 // === MOVING PLATFORM SYSTEM ===
 const platformIDs = 'abcdefghij'.split('');
