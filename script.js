@@ -320,6 +320,10 @@ let spinningState = {
 };
 let fallingThroughSpin = false;
 
+// --- NEW: variable to allow falling through any platform after enemy collision
+let fallingThroughAnyPlatform = false;
+let fallingThroughUntilY = null;
+
 function scanCoins() {
   coins = [];
   scamCoins = [];
@@ -343,6 +347,8 @@ function resetPlayerToStart() {
         cameraX = 0;
         cameraY = 0;
         fallingThroughSpin = false;
+        fallingThroughAnyPlatform = false;
+        fallingThroughUntilY = null;
         return;
       }
     }
@@ -361,6 +367,8 @@ function loadLevel(n) {
   scanEnemies();
   spinningState = { time: 0, flipping: false, flipAngle: 0 };
   fallingThroughSpin = false;
+  fallingThroughAnyPlatform = false;
+  fallingThroughUntilY = null;
 }
 
 resetPlayerToStart();
@@ -435,6 +443,15 @@ function isSpinningPlatformSolid() {
 }
 
 function checkCollision(x, y) {
+  // --- Allow falling through any platform after enemy collision ---
+  if (fallingThroughAnyPlatform) {
+    if (y + player.height < fallingThroughUntilY) {
+      return false;
+    } else {
+      fallingThroughAnyPlatform = false;
+    }
+  }
+
   const corners = [
     [x, y],
     [x + player.width, y],
@@ -625,13 +642,11 @@ function handlePlayerEnemyCollision() {
         player.dy > 0
       ) {
         // Landed on top: safe, could bounce if desired
-        // Example: player.dy = -player.jumpPower * 0.7; // mini-bounce
-        // Optionally, enemy could be defeated here!
         continue;
       } else {
         // Side or bottom collision: penalize player
-        fallingThroughSpin = true;
-        // Lose 40% of coins, rounded down
+        fallingThroughAnyPlatform = true;
+        fallingThroughUntilY = player.y + player.height + 12; // Tune the +12 as needed
         let lost = Math.floor(player.coinCount * 0.4);
         player.coinCount -= lost;
         if (player.coinCount < 0) player.coinCount = 0;
