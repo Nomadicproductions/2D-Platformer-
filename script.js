@@ -154,8 +154,7 @@ let cameraY = 0;
 let coins = [];
 let scamCoins = [];
 
-// ... previous code up to === ENEMY SYSTEM ===
-
+// === ENEMY SYSTEM ===
 let enemies = []; // Will contain {type, x, y, px, py, dir, patrolMin, patrolMax, speed}
 
 /**
@@ -184,8 +183,7 @@ function scanEnemies() {
       const char = level[y][x];
       if (char === '1' || char === '2') {
         // Find how far the enemy can patrol on this platform
-        // The enemy must remain on solid ground, so scan left/right on the *row below* for ground
-        // But for now, use the row the enemy is on as the definition of the platform
+        // The enemy must remain on solid ground, so scan left/right on the *row* for contiguous ground
         const { left, right } = findPlatformBounds(x, y, level);
         enemies.push({
           type: char,
@@ -219,7 +217,18 @@ function updateEnemies(delta) {
   }
 }
 
-// ... rest of your code remains unchanged ...
+function drawEnemies() {
+  for (let enemy of enemies) {
+    ctx.fillStyle = tileColors[enemy.type] || "#000";
+    ctx.fillRect(enemy.x - cameraX, enemy.y - cameraY, tileSize, tileSize);
+    // Optionally, add a face or label for each enemy type
+    ctx.fillStyle = "#fff";
+    ctx.font = "16px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(enemy.type === '1' ? "S" : "D", enemy.x - cameraX + tileSize/2, enemy.y - cameraY + tileSize/2);
+  }
+}
 
 // === MOVING PLATFORM SYSTEM ===
 const platformIDs = 'abcdefghij'.split('');
