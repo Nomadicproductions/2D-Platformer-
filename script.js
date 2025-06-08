@@ -509,6 +509,14 @@ function getPlayerStandingPlatform() {
   return null;
 }
 
+// --- Enemy collision helper ---
+function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+  return ax < bx + bw &&
+         ax + aw > bx &&
+         ay < by + bh &&
+         ay + ah > by;
+}
+
 // --- Player update with riding, snapping, and micro-jump logic ---
 function updatePlayer() {
   player.dx = 0;
@@ -585,6 +593,52 @@ function updatePlayer() {
   });
 
   checkFinish();
+}
+
+// --- Player/Enemy collision physics ---
+function handlePlayerEnemyCollision() {
+  for (let enemy of enemies) {
+    // Enemy rectangle
+    const ex = enemy.x;
+    const ey = enemy.y;
+    const ew = tileSize;
+    const eh = tileSize;
+
+    // Player rectangle
+    const px = player.x;
+    const py = player.y;
+    const pw = player.width;
+    const ph = player.height;
+
+    if (rectsOverlap(px, py, pw, ph, ex, ey, ew, eh)) {
+      // Determine if player is hitting enemy from the top
+      const playerBottom = py + ph;
+      const playerPrevBottom = (py - player.dy) + ph;
+      const enemyTop = ey;
+
+      // Allow a little tolerance for "top" collision
+      const tolerance = 6;
+
+      if (
+        playerPrevBottom <= enemyTop + tolerance &&
+        playerBottom > enemyTop + tolerance &&
+        player.dy > 0
+      ) {
+        // Landed on top: safe, could bounce if desired
+        // Example: player.dy = -player.jumpPower * 0.7; // mini-bounce
+        // Optionally, enemy could be defeated here!
+        continue;
+      } else {
+        // Side or bottom collision: penalize player
+        fallingThroughSpin = true;
+        // Lose 40% of coins, rounded down
+        let lost = Math.floor(player.coinCount * 0.4);
+        player.coinCount -= lost;
+        if (player.coinCount < 0) player.coinCount = 0;
+        break; // Only process one collision per frame
+      }
+    }
+  }
 }
 
 function isPlayerOnSpinningPlatform(x, y) {
@@ -744,6 +798,7 @@ function gameLoop() {
   updateSpinningState(delta);
   updateMovingPlatforms(delta);
   updatePlayer();
+  handlePlayerEnemyCollision(); // <--- Add player/enemy collision here
   updateEnemies(delta);
   updateCamera();
   drawLevel();
