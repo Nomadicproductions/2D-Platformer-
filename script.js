@@ -155,7 +155,7 @@ let coins = [];
 let scamCoins = [];
 
 // === ENEMY SYSTEM ===
-let enemies = []; // {type, x, y, px, py, dir, patrolMin, patrolMax, speed, vy, grounded, jumpCooldown, jumpInterval}
+let enemies = []; // {type, x, y, px, py, dir, patrolMin, patrolMax, speed, vy, grounded, jumpCooldown, jumpInterval, alive}
 
 /**
  * Find the patrol min and max x tile coordinates where enemy can safely walk,
@@ -678,10 +678,9 @@ function handlePlayerEnemyCollision() {
       const playerPrevBottom = (py - player.dy) + ph;
       const enemyTop = ey;
       const horizontalOverlap =
-        (px + pw > ex + ew * 0.15) && (px < ex + ew - ew * 0.15); // avoid edge triggers
+        (px + pw > ex + ew * 0.15) && (px < ex + ew - ew * 0.15);
 
       const topTolerance = 7;
-      // Player must be falling downward and main vertical overlap is at enemy's top
       if (
         player.dy > 0 &&
         playerPrevBottom <= enemyTop + topTolerance &&
@@ -691,7 +690,9 @@ function handlePlayerEnemyCollision() {
         // "Enemy kill": bounce and remove enemy
         player.dy = -player.jumpPower * 0.5;
         enemy.alive = false;
-        break; // Only one enemy per frame
+        // FIX: Do not activate fall through platform on enemy kill!
+        // Return so penalty does not trigger
+        break;
       }
       // Side or bottom collision: penalize player
       else {
