@@ -687,21 +687,25 @@ function handlePlayerEnemyCollision() {
         playerBottom > enemyTop + topTolerance &&
         horizontalOverlap
       ) {
-        // "Enemy kill": bounce and remove enemy
+        // --- ENEMY KILL LOGIC ---
         player.dy = -player.jumpPower * 0.5;
         enemy.alive = false;
-        // FIX: Do not activate fall through platform on enemy kill!
-        // Return so penalty does not trigger
-        break;
-      }
-      // Side or bottom collision: penalize player
-      else {
+        // --- SNAP PLAYER UP IF SUNK INTO PLATFORM ---
+        // Find the tile directly under player
+        let expectedY = Math.floor((enemy.y - player.height) / tileSize) * tileSize;
+        if (player.y > expectedY) {
+          player.y = expectedY;
+        }
+        // Make sure we don't set fall-through state!
+        return;
+      } else {
+        // --- SIDE OR BOTTOM COLLISION: PENALTY ---
         fallingThroughAnyPlatform = true;
         fallingThroughUntilY = player.y + player.height + 45;
         let lost = Math.floor(player.coinCount * 0.4);
         player.coinCount -= lost;
         if (player.coinCount < 0) player.coinCount = 0;
-        break;
+        return;
       }
     }
   }
