@@ -165,7 +165,6 @@ function findPlatformPatrolBounds(x, y, level) {
   let left = x, right = x;
   // Move left
   for (let lx = x; lx >= 0; lx--) {
-    // Is the tile below solid and this tile is empty (so enemy can stand here)?
     if (
       level[y+1] &&
       level[y+1][lx] !== ' ' &&
@@ -197,7 +196,6 @@ function scanEnemies() {
     for (let x = 0; x < level[y].length; x++) {
       const char = level[y][x];
       if (char === '1' || char === '2') {
-        // Find patrol bounds using ground below
         const { left, right } = findPlatformPatrolBounds(x, y, level);
         enemies.push({
           type: char,
@@ -209,10 +207,11 @@ function scanEnemies() {
           patrolMin: left * tileSize,
           patrolMax: right * tileSize,
           speed: 1.2,
-          vy: 0, // vertical velocity
+          vy: 0,
           grounded: false,
           jumpCooldown: 0,
-          jumpInterval: 1000 + Math.random() * 1500 // ms, randomize each spawn
+          jumpInterval: 1000 + Math.random() * 1500,
+          alive: true
         });
       }
     }
@@ -220,17 +219,14 @@ function scanEnemies() {
 }
 
 function isEnemyGrounded(enemy) {
-  // Check directly below the enemy's feet
   const ex = enemy.x;
   const ey = enemy.y;
   const ew = tileSize;
   const eh = tileSize;
-  // Two points: left and right of feet
   for (let dx of [2, ew - 2]) {
     const tx = Math.floor((ex + dx) / tileSize);
     const ty = Math.floor((ey + eh + 1) / tileSize);
     if (level[ty] && level[ty][tx] && level[ty][tx] !== ' ') return true;
-    // Check moving platforms
     for (let p of movingPlatforms) {
       let px, py, w, h;
       if (p.vertical) {
@@ -259,7 +255,8 @@ function isEnemyGrounded(enemy) {
 
 function updateEnemies(delta) {
   for (let enemy of enemies) {
-    // Horizontal patrol
+    if (!enemy.alive) continue;
+
     enemy.x += enemy.dir * enemy.speed;
     if (enemy.x < enemy.patrolMin) {
       enemy.x = enemy.patrolMin;
@@ -270,14 +267,10 @@ function updateEnemies(delta) {
       enemy.dir = -1;
     }
 
-    // === ENEMY JUMP PHYSICS ===
-    // Apply gravity
+    // Jump physics
     enemy.vy += 0.4;
-
-    // Move vertically
     enemy.y += enemy.vy;
 
-    // Check if landed
     if (isEnemyGrounded(enemy)) {
       enemy.y = Math.floor((enemy.y + tileSize) / tileSize) * tileSize - tileSize;
       enemy.vy = 0;
@@ -286,17 +279,14 @@ function updateEnemies(delta) {
       enemy.grounded = false;
     }
 
-    // Random jump
     enemy.jumpCooldown += delta;
     if (enemy.grounded && enemy.jumpCooldown > enemy.jumpInterval) {
-      // Jump!
       if (enemy.type === '1') {
-        enemy.vy = -2; // enemy 1: jump power 2
+        enemy.vy = -2;
       } else if (enemy.type === '2') {
-        enemy.vy = -4; // enemy 2: jump power 4
+        enemy.vy = -4;
       }
       enemy.jumpCooldown = 0;
-      // Randomize next jump interval
       enemy.jumpInterval = 800 + Math.random() * 2200;
     }
   }
@@ -304,6 +294,7 @@ function updateEnemies(delta) {
 
 function drawEnemies() {
   for (let enemy of enemies) {
+    if (!enemy.alive) continue;
     ctx.fillStyle = tileColors[enemy.type] || "#000";
     ctx.fillRect(enemy.x - cameraX, enemy.y - cameraY, tileSize, tileSize);
     ctx.fillStyle = "#fff";
@@ -324,7 +315,6 @@ function scanMovingPlatforms() {
   movingPlatforms = [];
   for (let id of platformIDs) {
     let aPos = null, bPos = null, length = 0, vertical = false;
-    // Find endpoints
     for (let y = 0; y < level.length; y++) {
       for (let x = 0; x < level[y].length; x++) {
         if (level[y].substr(x, 2) === endpointAChar(id)) aPos = {x, y};
@@ -335,9 +325,8 @@ function scanMovingPlatforms() {
     vertical = (aPos.x === bPos.x);
 
     if (vertical) {
-      length = 1; // Only 1 tile tall for vertical platforms, width is locked to 6 tiles
+      length = 1;
     } else {
-      // Count contiguous id tiles in the row at aPos.y, between endpoints (exclusive)
       let minX = Math.min(aPos.x, bPos.x);
       let maxX = Math.max(aPos.x, bPos.x);
       length = 0;
@@ -355,14 +344,14 @@ function scanMovingPlatforms() {
       timer: 0,
       direction: 1,
       pos: vertical ? aPos.y+1 : aPos.x+2,
-      lastPos: vertical ? aPos.y+1 : aPos.x+2 // initialize
+      lastPos: vertical ? aPos.y+1 : aPos.x+2
     });
   }
 }
 
 function updateMovingPlatforms(delta) {
   for (let p of movingPlatforms) {
-    p.lastPos = p.pos; // store old pos for delta calculation
+    p.lastPos = p.pos;
     const waitTime = 3000, moveTime = 5000;
     if (p.t === 0) {
       p.timer += delta;
@@ -392,8 +381,6 @@ let spinningState = {
   flipAngle: 0
 };
 let fallingThroughSpin = false;
-
-// --- NEW: variable to allow falling through any platform after enemy collision
 let fallingThroughAnyPlatform = false;
 let fallingThroughUntilY = null;
 
@@ -516,7 +503,6 @@ function isSpinningPlatformSolid() {
 }
 
 function checkCollision(x, y) {
-  // --- Allow falling through any platform after enemy collision ---
   if (fallingThroughAnyPlatform) {
     if (y + player.height < fallingThroughUntilY) {
       return false;
@@ -545,7 +531,7 @@ function checkCollision(x, y) {
         px = (p.aPos.x - 2.5) * tileSize;
         py = p.pos * tileSize;
         w = 6 * tileSize;
-        h = tileSize; // Only 1 tile tall for vertical platforms
+        h = tileSize;
       } else {
         px = p.pos * tileSize;
         py = p.aPos.y * tileSize;
@@ -563,7 +549,7 @@ function checkCollision(x, y) {
 }
 
 // --- PLATFORM RIDING HELPERS ---
-let microJumpActive = false; // Tracks if the micro-jump is in progress
+let microJumpActive = false;
 
 function getPlayerStandingPlatform() {
   for (let p of movingPlatforms) {
@@ -572,7 +558,7 @@ function getPlayerStandingPlatform() {
       px = (p.aPos.x - 2.5) * tileSize;
       py = p.pos * tileSize;
       w = 6 * tileSize;
-      h = tileSize; // Only 1 tile tall for vertical platforms
+      h = tileSize;
       const platformTop = py;
       if (
         player.x + player.width > px &&
@@ -599,7 +585,6 @@ function getPlayerStandingPlatform() {
   return null;
 }
 
-// --- Enemy collision helper ---
 function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
   return ax < bx + bw &&
          ax + aw > bx &&
@@ -607,20 +592,16 @@ function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
          ay + ah > by;
 }
 
-// --- Player update with riding, snapping, and micro-jump logic ---
 function updatePlayer() {
   player.dx = 0;
   if (keys.left) player.dx = -player.speed;
   if (keys.right) player.dx = player.speed;
 
-  // Gravity
   player.dy += 0.4;
 
-  // Move horizontally
   player.x += player.dx;
   if (checkCollision(player.x, player.y)) player.x -= player.dx;
 
-  // Move vertically
   player.y += player.dy;
   let collided = checkCollision(player.x, player.y);
 
@@ -632,7 +613,6 @@ function updatePlayer() {
     player.grounded = false;
   }
 
-  // --- PLATFORM RIDING PHYSICS ---
   let riding = getPlayerStandingPlatform();
   if (riding) {
     let {p, px, py, w, h, vertical, platformTop} = riding;
@@ -644,28 +624,21 @@ function updatePlayer() {
       delta = (p.pos - p.lastPos) * tileSize;
       player.x += delta;
     }
-
-    // --- SNAPPING LOGIC & MICRO-JUMP ---
-    // Only snap vertically if NOT pressing jump (do not snap if already in air/jumping)
     let pressingMovement = !player.grounded;
     if (!pressingMovement) {
-      // Snap vertically ONLY (never X)
       player.y = platformTop - player.height;
       player.dy = 0;
       player.grounded = true;
-
-      // MICRO-JUMP: allow left/right to break snap
       if ((keys.left || keys.right) && !keys.jump && !microJumpActive) {
-        player.dy = -3.5; // Increase this value for more "micro-jump" effect
+        player.dy = -3.5;
         player.grounded = false;
         microJumpActive = true;
       }
-      // Once micro-jump triggers, grounded will be false, so this block won't run again until landed
     } else {
-      microJumpActive = false; // Reset
+      microJumpActive = false;
     }
   } else {
-    microJumpActive = false; // Reset
+    microJumpActive = false;
   }
 
   if (fallingThroughSpin) {
@@ -687,43 +660,47 @@ function updatePlayer() {
 
 // --- Player/Enemy collision physics ---
 function handlePlayerEnemyCollision() {
-  for (let enemy of enemies) {
-    // Enemy rectangle
+  for (let i = 0; i < enemies.length; i++) {
+    const enemy = enemies[i];
+    if (!enemy.alive) continue;
     const ex = enemy.x;
     const ey = enemy.y;
     const ew = tileSize;
     const eh = tileSize;
-
-    // Player rectangle
     const px = player.x;
     const py = player.y;
     const pw = player.width;
     const ph = player.height;
 
     if (rectsOverlap(px, py, pw, ph, ex, ey, ew, eh)) {
-      // Determine if player is hitting enemy from the top
+      // Determine if player is coming down on top of enemy
       const playerBottom = py + ph;
       const playerPrevBottom = (py - player.dy) + ph;
       const enemyTop = ey;
+      const horizontalOverlap =
+        (px + pw > ex + ew * 0.15) && (px < ex + ew - ew * 0.15); // avoid edge triggers
 
-      // Allow a little tolerance for "top" collision
-      const tolerance = 6;
-
+      const topTolerance = 7;
+      // Player must be falling downward and main vertical overlap is at enemy's top
       if (
-        playerPrevBottom <= enemyTop + tolerance &&
-        playerBottom > enemyTop + tolerance &&
-        player.dy > 0
+        player.dy > 0 &&
+        playerPrevBottom <= enemyTop + topTolerance &&
+        playerBottom > enemyTop + topTolerance &&
+        horizontalOverlap
       ) {
-        // Landed on top: safe, could bounce if desired
-        continue;
-      } else {
-        // Side or bottom collision: penalize player
+        // "Enemy kill": bounce and remove enemy
+        player.dy = -player.jumpPower * 0.5;
+        enemy.alive = false;
+        break; // Only one enemy per frame
+      }
+      // Side or bottom collision: penalize player
+      else {
         fallingThroughAnyPlatform = true;
-        fallingThroughUntilY = player.y + player.height + 45; // Tune the +12 as needed
+        fallingThroughUntilY = player.y + player.height + 45;
         let lost = Math.floor(player.coinCount * 0.4);
         player.coinCount -= lost;
         if (player.coinCount < 0) player.coinCount = 0;
-        break; // Only process one collision per frame
+        break;
       }
     }
   }
@@ -764,7 +741,6 @@ function drawLevel() {
   for (let p of movingPlatforms) {
     ctx.fillStyle = tileColors[p.id] || "#0cf";
     if (p.vertical) {
-      // 6 tiles wide, always 1 tile tall
       let px = (p.aPos.x - 2.5) * tileSize - cameraX;
       let py = p.pos * tileSize - cameraY;
       ctx.fillRect(px, py, 6 * tileSize, tileSize);
