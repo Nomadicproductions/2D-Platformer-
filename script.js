@@ -155,7 +155,7 @@ let coins = [];
 let scamCoins = [];
 
 // === ENEMY SYSTEM ===
-let enemies = []; // {type, x, y, px, py, dir, patrolMin, patrolMax, speed}
+let enemies = []; // {type, x, y, px, py, dir, patrolMin, patrolMax, speed, vy, grounded, jumpCooldown, jumpInterval}
 
 /**
  * Find the patrol min and max x tile coordinates where enemy can safely walk,
@@ -208,15 +208,58 @@ function scanEnemies() {
           dir: 1,
           patrolMin: left * tileSize,
           patrolMax: right * tileSize,
-          speed: 1.2
+          speed: 1.2,
+          vy: 0, // vertical velocity
+          grounded: false,
+          jumpCooldown: 0,
+          jumpInterval: 1000 + Math.random() * 1500 // ms, randomize each spawn
         });
       }
     }
   }
 }
 
+function isEnemyGrounded(enemy) {
+  // Check directly below the enemy's feet
+  const ex = enemy.x;
+  const ey = enemy.y;
+  const ew = tileSize;
+  const eh = tileSize;
+  // Two points: left and right of feet
+  for (let dx of [2, ew - 2]) {
+    const tx = Math.floor((ex + dx) / tileSize);
+    const ty = Math.floor((ey + eh + 1) / tileSize);
+    if (level[ty] && level[ty][tx] && level[ty][tx] !== ' ') return true;
+    // Check moving platforms
+    for (let p of movingPlatforms) {
+      let px, py, w, h;
+      if (p.vertical) {
+        px = (p.aPos.x - 2.5) * tileSize;
+        py = p.pos * tileSize;
+        w = 6 * tileSize;
+        h = tileSize;
+      } else {
+        px = p.pos * tileSize;
+        py = p.aPos.y * tileSize;
+        w = p.length * tileSize;
+        h = tileSize;
+      }
+      if (
+        ex + dx >= px &&
+        ex + dx < px + w &&
+        ey + eh + 1 >= py &&
+        ey + eh + 1 < py + h
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 function updateEnemies(delta) {
   for (let enemy of enemies) {
+    // Horizontal patrol
     enemy.x += enemy.dir * enemy.speed;
     if (enemy.x < enemy.patrolMin) {
       enemy.x = enemy.patrolMin;
@@ -225,6 +268,36 @@ function updateEnemies(delta) {
     if (enemy.x > enemy.patrolMax) {
       enemy.x = enemy.patrolMax;
       enemy.dir = -1;
+    }
+
+    // === ENEMY JUMP PHYSICS ===
+    // Apply gravity
+    enemy.vy += 0.4;
+
+    // Move vertically
+    enemy.y += enemy.vy;
+
+    // Check if landed
+    if (isEnemyGrounded(enemy)) {
+      enemy.y = Math.floor((enemy.y + tileSize) / tileSize) * tileSize - tileSize;
+      enemy.vy = 0;
+      enemy.grounded = true;
+    } else {
+      enemy.grounded = false;
+    }
+
+    // Random jump
+    enemy.jumpCooldown += delta;
+    if (enemy.grounded && enemy.jumpCooldown > enemy.jumpInterval) {
+      // Jump!
+      if (enemy.type === '1') {
+        enemy.vy = -2; // enemy 1: jump power 2
+      } else if (enemy.type === '2') {
+        enemy.vy = -4; // enemy 2: jump power 4
+      }
+      enemy.jumpCooldown = 0;
+      // Randomize next jump interval
+      enemy.jumpInterval = 800 + Math.random() * 2200;
     }
   }
 }
@@ -813,7 +886,7 @@ function gameLoop() {
   updateSpinningState(delta);
   updateMovingPlatforms(delta);
   updatePlayer();
-  handlePlayerEnemyCollision(); // <--- Add player/enemy collision here
+  handlePlayerEnemyCollision();
   updateEnemies(delta);
   updateCamera();
   drawLevel();
