@@ -39,7 +39,7 @@ const levels = [
     "#                            #",
     "#              #             #",
     "#      bB        #           #",
-    "#S                      $    #",
+    "#S        Q             $    #",
     "##############################"
   ],
   [
@@ -88,7 +88,7 @@ const levels = [
     "#                                                 2                                                #",
     "#                                                                                                  #",
     "#                                                                                                  #",
-    "#                               #######                           #    #                           #",
+    "#                               #######                           #    #         R                 #",
     "#                                       #                                                          #",
     "#                                               1              #          aB                       #",
     "#                                       ####################       bA                              #",
@@ -99,7 +99,7 @@ const levels = [
     "#                                                                                                  #",
     "#                                                                  bB        ############          #",
     "#                                                                                                  #",
-    "#                                                                         @@@@                     #",
+    "#                                                                         @@@@          T          #",
     "#                                                                                                  #",
     "#                                                                                                  #",
     "#                                                              #########                           #",
@@ -110,9 +110,9 @@ const levels = [
     "#                                                                                                  #",
     "#                                                                                                  #",
     "#                                                                                                  #",
-    "#                              $              #######        @@@@@                                 #",
+    "#                              W              #######        @@@@@                                 #",
     "#                                                                                                  #",
-    "# S           !       $        #        !               x                                          #",
+    "# S           !       $        #        !    E          x                                          #",
     "####################################################################################################"
   ]
 ];
@@ -131,8 +131,93 @@ const tileColors = {
   '2': '#27ae60',
   '3': '#2980b9',
   '!': '#fff',
-  'a': '#0cf', 'b': '#f0c', 'c': '#0f8', 'd': '#fa0', 'e': '#0fa', 'f': '#a0f', 'g': '#8a0', 'h': '#08a', 'i': '#a80', 'j': '#808'
+  'a': '#0cf', 'b': '#f0c', 'c': '#0f8', 'd': '#fa0', 'e': '#0fa', 'f': '#a0f', 'g': '#8a0', 'h': '#08a', 'i': '#a80', 'j': '#808',
+  // Tutorial triggers (code green for all)
+  'Q': '#00ff00', // Start
+  'W': '#00ff00', // Coin
+  'E': '#00ff00', // Scam Coin
+  'R': '#00ff00', // Moving Platform
+  'T': '#00ff00', // Spinning Platform
+  'Y': '#00ff00', // Enemy
+  'U': '#00ff00'  // End Point
 };
+
+// === TUTORIAL TRIGGER SYSTEM ===
+const triggerSymbols = ['Q','W','E','R','T','Y','U'];
+const triggerMessages = {
+  Q: "Start Point: This is where your journey begins. Move and jump to explore the level.",
+  W: "Coin: Collect coins to increase your score.",
+  E: "Scam Coin: These look like coins, but cost you points! Avoid them.",
+  R: "Moving Platform: These platforms move back and forth. Ride them carefully.",
+  T: "Spinning Platform: These platforms flip periodically. Watch your step!",
+  Y: "Enemy: Jump on enemies to defeat them, but avoid touching them from the side.",
+  U: "End Point: Reach here to complete the level."
+};
+let triggers = {}; // { Q: [{x,y}], ... }
+let shownTriggers = {}; // { Q: true, ... }
+let activeTrigger = null;
+let dismissCounter = 0;
+let lastKey = null;
+function scanTriggers() {
+  triggers = {};
+  shownTriggers = {};
+  for (let symbol of triggerSymbols) triggers[symbol] = [];
+  for (let y = 0; y < level.length; y++) {
+    for (let x = 0; x < level[y].length; x++) {
+      let char = level[y][x];
+      if (triggerSymbols.includes(char)) {
+        triggers[char].push({x, y});
+      }
+    }
+  }
+}
+function resetTriggers() {
+  shownTriggers = {};
+  activeTrigger = null;
+  dismissCounter = 0;
+  lastKey = null;
+}
+function tryDismissTrigger(key) {
+  if (!activeTrigger) return;
+  if (lastKey !== key) {
+    lastKey = key;
+    dismissCounter = 1;
+  } else {
+    dismissCounter++;
+    if (dismissCounter >= 2) {
+      activeTrigger = null;
+      dismissCounter = 0;
+      lastKey = null;
+    }
+  }
+}
+function drawTriggerOverlay() {
+  if (!activeTrigger) return;
+  const message = triggerMessages[activeTrigger];
+  if (!message) return;
+  const boxWidth = canvas.width * 0.9;
+  const boxHeight = 70;
+  const boxX = (canvas.width - boxWidth) / 2;
+  const boxY = canvas.height - boxHeight - 24;
+  ctx.save();
+  ctx.globalAlpha = 0.96;
+  ctx.fillStyle = "#23292e";
+  ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = "#00ff00";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+  ctx.font = "bold 18px 'Fira Mono', 'Consolas', 'monospace'";
+  ctx.fillStyle = "#66ff66";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillText(message, boxX + 18, boxY + 16);
+  ctx.font = "12px 'Fira Mono', 'Consolas', 'monospace'";
+  ctx.fillText("Press any button twice to close", boxX + 18, boxY + boxHeight - 22);
+  ctx.restore();
+}
+
+// ---------------------------------------
 
 const player = {
   x: 0,
@@ -159,10 +244,6 @@ let stompInvulnTimer = 0; // # -- NEW: stomp kill invulnerability (frames)
 // === ENEMY SYSTEM ===
 let enemies = []; // {type, x, y, px, py, dir, patrolMin, patrolMax, speed, vy, grounded, jumpCooldown, jumpInterval, alive}
 
-/**
- * Find the patrol min and max x tile coordinates where enemy can safely walk,
- * meaning there's ground (non-space) beneath at (x, y+1)
- */
 function findPlatformPatrolBounds(x, y, level) {
   let left = x, right = x;
   // Move left
@@ -428,6 +509,8 @@ function loadLevel(n) {
   scanCoins();
   scanMovingPlatforms();
   scanEnemies();
+  scanTriggers();
+  resetTriggers();
   spinningState = { time: 0, flipping: false, flipAngle: 0 };
   fallingThroughSpin = false;
   fallingThroughAnyPlatform = false;
@@ -439,6 +522,8 @@ resetPlayerToStart();
 scanCoins();
 scanMovingPlatforms();
 scanEnemies();
+scanTriggers();
+resetTriggers();
 
 const keys = { left: false, right: false, jump: false };
 
@@ -449,15 +534,22 @@ controlButtons.forEach(btn => {
   btn.addEventListener('touchstart', e => e.preventDefault());
 });
 
-document.querySelector('.left').addEventListener('touchstart', () => keys.left = true);
+document.querySelector('.left').addEventListener('touchstart', () => {
+  keys.left = true;
+  tryDismissTrigger('left');
+});
 document.querySelector('.left').addEventListener('touchend', () => keys.left = false);
-document.querySelector('.right').addEventListener('touchstart', () => keys.right = true);
+document.querySelector('.right').addEventListener('touchstart', () => {
+  keys.right = true;
+  tryDismissTrigger('right');
+});
 document.querySelector('.right').addEventListener('touchend', () => keys.right = false);
 document.querySelector('.jump').addEventListener('touchstart', () => {
   if (player.grounded) {
     player.dy = -player.jumpPower;
     player.grounded = false;
   }
+  tryDismissTrigger('jump');
 });
 
 function collectCoin(coinList, tileChar, inventoryChange) {
@@ -651,6 +743,26 @@ function updatePlayer() {
   if (fallingThroughSpin) {
     if (!isPlayerOnAnySpinningPlatform(player.x, player.y + player.height / 2)) {
       fallingThroughSpin = false;
+    }
+  }
+
+  // --- TUTORIAL TRIGGER SYSTEM: detect overlap and show text ---
+  if (!activeTrigger) {
+    for (let symbol of triggerSymbols) {
+      if (shownTriggers[symbol]) continue;
+      for (let trig of triggers[symbol]) {
+        let tx = trig.x * tileSize, ty = trig.y * tileSize;
+        if (rectsOverlap(player.x, player.y, player.width, player.height, tx, ty, tileSize, tileSize)) {
+          activeTrigger = symbol;
+          shownTriggers[symbol] = true;
+          // Remove all from map for this symbol:
+          for (let t of triggers[symbol]) {
+            level[t.y] = level[t.y].substring(0, t.x) + ' ' + level[t.y].substring(t.x + 1);
+          }
+          break;
+        }
+      }
+      if (activeTrigger) break;
     }
   }
 
@@ -876,6 +988,7 @@ function gameLoop() {
   drawPlayer();
   drawEnemies();
   updateDebug();
+  drawTriggerOverlay();
   requestAnimationFrame(gameLoop);
 }
 
