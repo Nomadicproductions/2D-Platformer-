@@ -118,29 +118,42 @@ const levels = [
 ];
 
 // === CONTROL CHARACTERS ===
+// Colors edited as per your request:
+// - All text triggers (Q,W,E,R,T,Y,U): pink
+// - Enemy 1: yellow
+// - Enemy 2: red
+// - Horizontal/Vertical moving platforms: green
+// - Spinning platform: purple
+// - Coin and scam coin: both orange
 const tileColors = {
-  '#': '#444',
-  '-': '#b5651d',
-  '@': '#ad00ad',
-  ' ': '#aee7ff',
-  'S': '#0f0',
-  'F': '#ff9800',
-  '$': '#ff0',
-  'x': '#999',
-  '1': '#e74c3c',
-  '2': '#27ae60',
-  '3': '#2980b9',
-  '!': '#fff',
-  'a': '#0cf', 'b': '#f0c', 'c': '#0f8', 'd': '#fa0', 'e': '#0fa', 'f': '#a0f', 'g': '#8a0', 'h': '#08a', 'i': '#a80', 'j': '#808',
-  // Tutorial triggers (code green for all)
-  'Q': '#00ff00', // Start
-  'W': '#00ff00', // Coin
-  'E': '#00ff00', // Scam Coin
-  'R': '#00ff00', // Moving Platform
-  'T': '#00ff00', // Spinning Platform
-  'Y': '#00ff00', // Enemy
-  'U': '#00ff00'  // End Point
+  '#': '#444',      // Wall/solid
+  '-': '#b5651d',   // Brown block
+  '@': '#a020f0',   // Spinning platform (purple)
+  ' ': '#aee7ff',   // Air/empty
+  'S': '#0f0',      // Start
+  'F': '#ff9800',   // Finish
+  '$': '#ff9100',   // Coin (orange)
+  'x': '#ff9100',   // Scam coin (orange)
+  '1': '#ffe600',   // Enemy1 (yellow)
+  '2': '#e74c3c',   // Enemy2 (red)
+  '3': '#2980b9',   // Decoration/blue
+  '!': '#fff',      // Decoration/white
+
+  // Platform/decoration
+  // 'a'...'j' will be colored in drawLevel based on platform orientation
+
+  // Text triggers: all pink
+  'Q': '#ff69b4',   // Tutorial: Start point (pink)
+  'W': '#ff69b4',   // Tutorial: Coin (pink)
+  'E': '#ff69b4',   // Tutorial: Scam Coin (pink)
+  'R': '#ff69b4',   // Tutorial: Moving Platform (pink)
+  'T': '#ff69b4',   // Tutorial: Spinning Platform (pink)
+  'Y': '#ff69b4',   // Tutorial: Enemy (pink)
+  'U': '#ff69b4'    // Tutorial: End point (pink)
 };
+
+// For moving platforms, override color in drawLevel to green
+const platformGreen = "#00d55a";
 
 // === TUTORIAL TRIGGER SYSTEM ===
 const triggerSymbols = ['Q','W','E','R','T','Y','U'];
@@ -204,11 +217,11 @@ function drawTriggerOverlay() {
   ctx.fillStyle = "#23292e";
   ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
   ctx.globalAlpha = 1;
-  ctx.strokeStyle = "#00ff00";
+  ctx.strokeStyle = "#ff69b4";
   ctx.lineWidth = 2;
   ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
   ctx.font = "bold 18px 'Fira Mono', 'Consolas', 'monospace'";
-  ctx.fillStyle = "#66ff66";
+  ctx.fillStyle = "#ffb1e7";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   ctx.fillText(message, boxX + 18, boxY + 16);
@@ -242,11 +255,10 @@ let scamCoins = [];
 let stompInvulnTimer = 0; // # -- NEW: stomp kill invulnerability (frames)
 
 // === ENEMY SYSTEM ===
-let enemies = []; // {type, x, y, px, py, dir, patrolMin, patrolMax, speed, vy, grounded, jumpCooldown, jumpInterval, alive}
+let enemies = [];
 
 function findPlatformPatrolBounds(x, y, level) {
   let left = x, right = x;
-  // Move left
   for (let lx = x; lx >= 0; lx--) {
     if (
       level[y+1] &&
@@ -258,7 +270,6 @@ function findPlatformPatrolBounds(x, y, level) {
       break;
     }
   }
-  // Move right
   for (let rx = x; rx < level[y].length; rx++) {
     if (
       level[y+1] &&
@@ -350,7 +361,6 @@ function updateEnemies(delta) {
       enemy.dir = -1;
     }
 
-    // Jump physics
     enemy.vy += 0.4;
     enemy.y += enemy.vy;
 
@@ -378,9 +388,13 @@ function updateEnemies(delta) {
 function drawEnemies() {
   for (let enemy of enemies) {
     if (!enemy.alive) continue;
-    ctx.fillStyle = tileColors[enemy.type] || "#000";
+    // Draw with the correct color
+    ctx.fillStyle =
+      enemy.type === '1' ? tileColors['1'] :
+      enemy.type === '2' ? tileColors['2'] :
+      "#000";
     ctx.fillRect(enemy.x - cameraX, enemy.y - cameraY, tileSize, tileSize);
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = "#222";
     ctx.font = "16px Arial";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -599,7 +613,7 @@ function isSpinningPlatformSolid() {
 }
 
 function checkCollision(x, y) {
-  if (stompInvulnTimer > 0) return false; // ignore all collisions during stomp invuln
+  if (stompInvulnTimer > 0) return false;
   if (fallingThroughAnyPlatform) {
     if (y + player.height < fallingThroughUntilY) {
       return false;
@@ -632,7 +646,8 @@ function checkCollision(x, y) {
       } else {
         px = p.pos * tileSize;
         py = p.aPos.y * tileSize;
-        w = p.length * tileSize; h = tileSize;
+        w = p.length * tileSize;
+        h = tileSize;
       }
       if (
         cx >= px && cx < px + w &&
@@ -645,7 +660,6 @@ function checkCollision(x, y) {
   return false;
 }
 
-// --- PLATFORM RIDING HELPERS ---
 let microJumpActive = false;
 
 function getPlayerStandingPlatform() {
@@ -746,7 +760,6 @@ function updatePlayer() {
     }
   }
 
-  // --- TUTORIAL TRIGGER SYSTEM: detect overlap and show text ---
   if (!activeTrigger) {
     for (let symbol of triggerSymbols) {
       if (shownTriggers[symbol]) continue;
@@ -755,7 +768,6 @@ function updatePlayer() {
         if (rectsOverlap(player.x, player.y, player.width, player.height, tx, ty, tileSize, tileSize)) {
           activeTrigger = symbol;
           shownTriggers[symbol] = true;
-          // Remove all from map for this symbol:
           for (let t of triggers[symbol]) {
             level[t.y] = level[t.y].substring(0, t.x) + ' ' + level[t.y].substring(t.x + 1);
           }
@@ -777,7 +789,6 @@ function updatePlayer() {
   checkFinish();
 }
 
-// --- Player/Enemy collision physics ---
 function handlePlayerEnemyCollision() {
   for (let i = 0; i < enemies.length; i++) {
     const enemy = enemies[i];
@@ -792,7 +803,6 @@ function handlePlayerEnemyCollision() {
     const ph = player.height;
 
     if (rectsOverlap(px, py, pw, ph, ex, ey, ew, eh)) {
-      // Determine if player is coming down on top of enemy
       const playerBottom = py + ph;
       const playerPrevBottom = (py - player.dy) + ph;
       const enemyTop = ey;
@@ -806,14 +816,12 @@ function handlePlayerEnemyCollision() {
         playerBottom > enemyTop + topTolerance &&
         horizontalOverlap
       ) {
-        // --- ENEMY KILL LOGIC ---
-        player.dy = -player.jumpPower * 0.8; // Stronger bounce!
+        player.dy = -player.jumpPower * 0.8;
         enemy.alive = false;
-        stompInvulnTimer = 8; // 8 frames of invulnerability
+        stompInvulnTimer = 8;
         player.y = enemy.y - player.height - 1;
         return;
       } else {
-        // --- SIDE OR BOTTOM COLLISION: PENALTY ---
         fallingThroughAnyPlatform = true;
         fallingThroughUntilY = player.y + player.height + 45;
         let lost = Math.floor(player.coinCount * 0.4);
@@ -857,20 +865,21 @@ function checkFinish() {
 }
 
 function drawLevel() {
+  // Draw moving platforms (always green)
   for (let p of movingPlatforms) {
-    ctx.fillStyle = tileColors[p.id] || "#0cf";
+    ctx.fillStyle = platformGreen;
     if (p.vertical) {
       let px = (p.aPos.x - 2.5) * tileSize - cameraX;
       let py = p.pos * tileSize - cameraY;
       ctx.fillRect(px, py, 6 * tileSize, tileSize);
-      ctx.fillStyle = "#0ff";
+      ctx.fillStyle = platformGreen;
       ctx.fillRect((p.aPos.x - 2.5) * tileSize - cameraX, p.aPos.y * tileSize - cameraY, 6 * tileSize, tileSize);
       ctx.fillRect((p.bPos.x - 2.5) * tileSize - cameraX, p.bPos.y * tileSize - cameraY, 6 * tileSize, tileSize);
     } else {
       let px = p.pos * tileSize - cameraX;
       let py = p.aPos.y * tileSize - cameraY;
       ctx.fillRect(px, py, p.length * tileSize, tileSize);
-      ctx.fillStyle = "#0ff";
+      ctx.fillStyle = platformGreen;
       ctx.fillRect(p.aPos.x * tileSize - cameraX, p.aPos.y * tileSize - cameraY, tileSize, tileSize);
       ctx.fillRect(p.bPos.x * tileSize - cameraX, p.bPos.y * tileSize - cameraY, tileSize, tileSize);
     }
@@ -913,7 +922,7 @@ function drawLevel() {
         );
         ctx.restore();
       } else if (char !== ' ') {
-        const color = tileColors[char] || '#000';
+        let color = tileColors[char] || '#000';
         ctx.fillStyle = color;
         ctx.fillRect(x * tileSize - cameraX, y * tileSize - cameraY, tileSize, tileSize);
         x++;
