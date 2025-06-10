@@ -154,6 +154,8 @@ let cameraY = 0;
 let coins = [];
 let scamCoins = [];
 
+let stompInvulnTimer = 0; // # -- NEW: stomp kill invulnerability (frames)
+
 // === ENEMY SYSTEM ===
 let enemies = []; // {type, x, y, px, py, dir, patrolMin, patrolMax, speed, vy, grounded, jumpCooldown, jumpInterval, alive}
 
@@ -409,6 +411,7 @@ function resetPlayerToStart() {
         fallingThroughSpin = false;
         fallingThroughAnyPlatform = false;
         fallingThroughUntilY = null;
+        stompInvulnTimer = 0;
         return;
       }
     }
@@ -429,6 +432,7 @@ function loadLevel(n) {
   fallingThroughSpin = false;
   fallingThroughAnyPlatform = false;
   fallingThroughUntilY = null;
+  stompInvulnTimer = 0;
 }
 
 resetPlayerToStart();
@@ -503,6 +507,7 @@ function isSpinningPlatformSolid() {
 }
 
 function checkCollision(x, y) {
+  if (stompInvulnTimer > 0) return false; // ignore all collisions during stomp invuln
   if (fallingThroughAnyPlatform) {
     if (y + player.height < fallingThroughUntilY) {
       return false;
@@ -593,6 +598,8 @@ function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
 }
 
 function updatePlayer() {
+  if (stompInvulnTimer > 0) stompInvulnTimer--;
+
   player.dx = 0;
   if (keys.left) player.dx = -player.speed;
   if (keys.right) player.dx = player.speed;
@@ -688,15 +695,10 @@ function handlePlayerEnemyCollision() {
         horizontalOverlap
       ) {
         // --- ENEMY KILL LOGIC ---
-        player.dy = -player.jumpPower * 0.5;
+        player.dy = -player.jumpPower * 0.8; // Stronger bounce!
         enemy.alive = false;
-        // --- SNAP PLAYER UP IF SUNK INTO PLATFORM ---
-        // Find the tile directly under player
-        let expectedY = Math.floor((enemy.y - player.height) / tileSize) * tileSize;
-        if (player.y > expectedY) {
-          player.y = expectedY;
-        }
-        // Make sure we don't set fall-through state!
+        stompInvulnTimer = 8; // 8 frames of invulnerability
+        player.y = enemy.y - player.height - 1;
         return;
       } else {
         // --- SIDE OR BOTTOM COLLISION: PENALTY ---
