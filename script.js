@@ -1,3 +1,42 @@
+// ==== DEVICE LAYOUT OPTIMISATION ====
+function getDeviceType() {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  if (width <= 600) return "mobile";
+  if (width > 600 && width <= 900) return "tablet-portrait";
+  if (width > 900 && width <= 1200) return "tablet-landscape";
+  return "desktop";
+}
+
+function optimiseLayout() {
+  const device = getDeviceType();
+  const canvas = document.getElementById("gameCanvas");
+  const controls = document.getElementById("controls");
+  // Remove previous device classes if present
+  controls.classList.remove("mobile", "tablet-portrait", "tablet-landscape", "desktop");
+  controls.classList.add(device);
+
+  // Optionally, adjust canvas height for device
+  if (device === "mobile") {
+    canvas.width = window.innerWidth;
+    canvas.height = Math.round(window.innerHeight * 0.70);
+  } else if (device.startsWith("tablet")) {
+    canvas.width = window.innerWidth;
+    canvas.height = Math.round(window.innerHeight * 0.75);
+  } else {
+    canvas.width = Math.min(960, window.innerWidth * 0.9);
+    canvas.height = Math.min(640, window.innerHeight * 0.8);
+  }
+}
+
+// Run on load and resize
+window.addEventListener("load", optimiseLayout);
+window.addEventListener("resize", optimiseLayout);
+
+// ==== REST OF GAME CODE ====
+
+// ----- (Everything below here is your original game code, unchanged except for optimised layout above) -----
+
 const tileSize = 32;
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -115,7 +154,6 @@ const levels = [
     "# S           !       $        #        !    E          x                                          #",
     "####################################################################################################"
   ],
-  // 8 new 6x6 blank levels with just start and finish
   [
     "######",
     "#    #",
@@ -217,7 +255,6 @@ const tileColors = {
   'U': '#ff69b4'    // Tutorial: End point (pink)
 };
 
-// For moving platforms, override color in drawLevel to green
 const platformGreen = "#00d55a";
 
 // === TUTORIAL TRIGGER SYSTEM ===
@@ -231,8 +268,8 @@ const triggerMessages = {
   Y: "Enemy: Jump on enemies to defeat them, but avoid touching them from the side.",
   U: "End Point: Reach here to complete the level."
 };
-let triggers = {}; // { Q: [{x,y}], ... }
-let shownTriggers = {}; // { Q: true, ... }
+let triggers = {};
+let shownTriggers = {};
 let activeTrigger = null;
 let dismissCounter = 0;
 let lastKey = null;
@@ -317,9 +354,8 @@ let cameraY = 0;
 let coins = [];
 let scamCoins = [];
 
-let stompInvulnTimer = 0; // # -- NEW: stomp kill invulnerability (frames)
+let stompInvulnTimer = 0;
 
-// === ENEMY SYSTEM ===
 let enemies = [];
 
 function findPlatformPatrolBounds(x, y, level) {
@@ -453,7 +489,6 @@ function updateEnemies(delta) {
 function drawEnemies() {
   for (let enemy of enemies) {
     if (!enemy.alive) continue;
-    // Draw with the correct color
     ctx.fillStyle =
       enemy.type === '1' ? tileColors['1'] :
       enemy.type === '2' ? tileColors['2'] :
@@ -467,7 +502,6 @@ function drawEnemies() {
   }
 }
 
-// === MOVING PLATFORM SYSTEM ===
 const platformIDs = 'abcdefghij'.split('');
 const endpointAChar = id => id + 'A';
 const endpointBChar = id => id + 'B';
@@ -930,7 +964,6 @@ function checkFinish() {
 }
 
 function drawLevel() {
-  // Draw moving platforms (always green)
   for (let p of movingPlatforms) {
     ctx.fillStyle = platformGreen;
     if (p.vertical) {
