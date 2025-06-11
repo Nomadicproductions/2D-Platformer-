@@ -1,5 +1,3 @@
-// v39: micro-jump now always triggers when left/right is pressed while snapped, even at higher power
-
 const tileSize = 32;
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -41,27 +39,198 @@ const levels = [
     "#                            #",
     "#              #             #",
     "#      bB        #           #",
-    "#S                      $    #",
+    "#S        Q             $    #",
     "##############################"
+  ],
+  [
+    "####################################################################################################",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                        3                                                         #",
+    "#                             ############################                                         #",
+    "#                                                                                                  #",
+    "#                                                            ###########                           #",
+    "#                                                         #               aA                       #",
+    "#                                                 2                                                #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                               #######                           #    #         R                 #",
+    "#                                       #                                                          #",
+    "#                                               1              #          aB                       #",
+    "#                                       ####################       bA                              #",
+    "#                                                                  b                               #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                  bB        ############          #",
+    "#                                                                                                  #",
+    "#                                                                         @@@@          T          #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                              #########                           #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                    #########                                     #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                                                                                                  #",
+    "#                              W              #######        @@@@@                                 #",
+    "#                                                                                                  #",
+    "# S           !       $        #        !    E          x                                          #",
+    "####################################################################################################"
   ]
 ];
 
 // === CONTROL CHARACTERS ===
+// Colors edited as per your request:
+// - All text triggers (Q,W,E,R,T,Y,U): pink
+// - Enemy 1: yellow
+// - Enemy 2: red
+// - Horizontal/Vertical moving platforms: green
+// - Spinning platform: purple
+// - Coin and scam coin: both orange
 const tileColors = {
-  '#': '#444',
-  '-': '#b5651d',
-  '@': '#ad00ad',
-  ' ': '#aee7ff',
-  'S': '#0f0',
-  'F': '#ff9800',
-  '$': '#ff0',
-  'x': '#999',
-  '1': '#e74c3c',
-  '2': '#27ae60',
-  '3': '#2980b9',
-  '!': '#fff',
-  'a': '#0cf', 'b': '#f0c', 'c': '#0f8', 'd': '#fa0', 'e': '#0fa', 'f': '#a0f', 'g': '#8a0', 'h': '#08a', 'i': '#a80', 'j': '#808'
+  '#': '#444',      // Wall/solid
+  '-': '#b5651d',   // Brown block
+  '@': '#a020f0',   // Spinning platform (purple)
+  ' ': '#aee7ff',   // Air/empty
+  'S': '#0f0',      // Start
+  'F': '#ff9800',   // Finish
+  '$': '#ff9100',   // Coin (orange)
+  'x': '#ff9100',   // Scam coin (orange)
+  '1': '#ffe600',   // Enemy1 (yellow)
+  '2': '#e74c3c',   // Enemy2 (red)
+  '3': '#2980b9',   // Decoration/blue
+  '!': '#fff',      // Decoration/white
+
+  // Platform/decoration
+  // 'a'...'j' will be colored in drawLevel based on platform orientation
+
+  // Text triggers: all pink
+  'Q': '#ff69b4',   // Tutorial: Start point (pink)
+  'W': '#ff69b4',   // Tutorial: Coin (pink)
+  'E': '#ff69b4',   // Tutorial: Scam Coin (pink)
+  'R': '#ff69b4',   // Tutorial: Moving Platform (pink)
+  'T': '#ff69b4',   // Tutorial: Spinning Platform (pink)
+  'Y': '#ff69b4',   // Tutorial: Enemy (pink)
+  'U': '#ff69b4'    // Tutorial: End point (pink)
 };
+
+// For moving platforms, override color in drawLevel to green
+const platformGreen = "#00d55a";
+
+// === TUTORIAL TRIGGER SYSTEM ===
+const triggerSymbols = ['Q','W','E','R','T','Y','U'];
+const triggerMessages = {
+  Q: "Start Point: This is where your journey begins. Move and jump to explore the level.",
+  W: "Coin: Collect coins to increase your score.",
+  E: "Scam Coin: These look like coins, but cost you points! Avoid them.",
+  R: "Moving Platform: These platforms move back and forth. Ride them carefully.",
+  T: "Spinning Platform: These platforms flip periodically. Watch your step!",
+  Y: "Enemy: Jump on enemies to defeat them, but avoid touching them from the side.",
+  U: "End Point: Reach here to complete the level."
+};
+let triggers = {}; // { Q: [{x,y}], ... }
+let shownTriggers = {}; // { Q: true, ... }
+let activeTrigger = null;
+let dismissCounter = 0;
+let lastKey = null;
+function scanTriggers() {
+  triggers = {};
+  shownTriggers = {};
+  for (let symbol of triggerSymbols) triggers[symbol] = [];
+  for (let y = 0; y < level.length; y++) {
+    for (let x = 0; x < level[y].length; x++) {
+      let char = level[y][x];
+      if (triggerSymbols.includes(char)) {
+        triggers[char].push({x, y});
+      }
+    }
+  }
+}
+function resetTriggers() {
+  shownTriggers = {};
+  activeTrigger = null;
+  dismissCounter = 0;
+  lastKey = null;
+}
+function tryDismissTrigger(key) {
+  if (!activeTrigger) return;
+  if (lastKey !== key) {
+    lastKey = key;
+    dismissCounter = 1;
+  } else {
+    dismissCounter++;
+    if (dismissCounter >= 2) {
+      activeTrigger = null;
+      dismissCounter = 0;
+      lastKey = null;
+    }
+  }
+}
+function drawTriggerOverlay() {
+  if (!activeTrigger) return;
+  const message = triggerMessages[activeTrigger];
+  if (!message) return;
+  const boxWidth = canvas.width * 0.9;
+  const boxHeight = 70;
+  const boxX = (canvas.width - boxWidth) / 2;
+  const boxY = canvas.height - boxHeight - 24;
+  ctx.save();
+  ctx.globalAlpha = 0.96;
+  ctx.fillStyle = "#23292e";
+  ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = "#ff69b4";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+  ctx.font = "bold 18px 'Fira Mono', 'Consolas', 'monospace'";
+  ctx.fillStyle = "#ffb1e7";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillText(message, boxX + 18, boxY + 16);
+  ctx.font = "12px 'Fira Mono', 'Consolas', 'monospace'";
+  ctx.fillText("Press any button twice to close", boxX + 18, boxY + boxHeight - 22);
+  ctx.restore();
+}
+
+// ---------------------------------------
 
 const player = {
   x: 0,
@@ -83,6 +252,156 @@ let cameraY = 0;
 let coins = [];
 let scamCoins = [];
 
+let stompInvulnTimer = 0; // # -- NEW: stomp kill invulnerability (frames)
+
+// === ENEMY SYSTEM ===
+let enemies = [];
+
+function findPlatformPatrolBounds(x, y, level) {
+  let left = x, right = x;
+  for (let lx = x; lx >= 0; lx--) {
+    if (
+      level[y+1] &&
+      level[y+1][lx] !== ' ' &&
+      level[y][lx] === ' '
+    ) {
+      left = lx;
+    } else if (lx !== x) {
+      break;
+    }
+  }
+  for (let rx = x; rx < level[y].length; rx++) {
+    if (
+      level[y+1] &&
+      level[y+1][rx] !== ' ' &&
+      level[y][rx] === ' '
+    ) {
+      right = rx;
+    } else if (rx !== x) {
+      break;
+    }
+  }
+  return { left, right };
+}
+
+function scanEnemies() {
+  enemies = [];
+  for (let y = 0; y < level.length; y++) {
+    for (let x = 0; x < level[y].length; x++) {
+      const char = level[y][x];
+      if (char === '1' || char === '2') {
+        const { left, right } = findPlatformPatrolBounds(x, y, level);
+        enemies.push({
+          type: char,
+          x: x * tileSize,
+          y: y * tileSize,
+          px: x,
+          py: y,
+          dir: 1,
+          patrolMin: left * tileSize,
+          patrolMax: right * tileSize,
+          speed: 1.2,
+          vy: 0,
+          grounded: false,
+          jumpCooldown: 0,
+          jumpInterval: 1000 + Math.random() * 1500,
+          alive: true
+        });
+      }
+    }
+  }
+}
+
+function isEnemyGrounded(enemy) {
+  const ex = enemy.x;
+  const ey = enemy.y;
+  const ew = tileSize;
+  const eh = tileSize;
+  for (let dx of [2, ew - 2]) {
+    const tx = Math.floor((ex + dx) / tileSize);
+    const ty = Math.floor((ey + eh + 1) / tileSize);
+    if (level[ty] && level[ty][tx] && level[ty][tx] !== ' ') return true;
+    for (let p of movingPlatforms) {
+      let px, py, w, h;
+      if (p.vertical) {
+        px = (p.aPos.x - 2.5) * tileSize;
+        py = p.pos * tileSize;
+        w = 6 * tileSize;
+        h = tileSize;
+      } else {
+        px = p.pos * tileSize;
+        py = p.aPos.y * tileSize;
+        w = p.length * tileSize;
+        h = tileSize;
+      }
+      if (
+        ex + dx >= px &&
+        ex + dx < px + w &&
+        ey + eh + 1 >= py &&
+        ey + eh + 1 < py + h
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function updateEnemies(delta) {
+  for (let enemy of enemies) {
+    if (!enemy.alive) continue;
+
+    enemy.x += enemy.dir * enemy.speed;
+    if (enemy.x < enemy.patrolMin) {
+      enemy.x = enemy.patrolMin;
+      enemy.dir = 1;
+    }
+    if (enemy.x > enemy.patrolMax) {
+      enemy.x = enemy.patrolMax;
+      enemy.dir = -1;
+    }
+
+    enemy.vy += 0.4;
+    enemy.y += enemy.vy;
+
+    if (isEnemyGrounded(enemy)) {
+      enemy.y = Math.floor((enemy.y + tileSize) / tileSize) * tileSize - tileSize;
+      enemy.vy = 0;
+      enemy.grounded = true;
+    } else {
+      enemy.grounded = false;
+    }
+
+    enemy.jumpCooldown += delta;
+    if (enemy.grounded && enemy.jumpCooldown > enemy.jumpInterval) {
+      if (enemy.type === '1') {
+        enemy.vy = -2;
+      } else if (enemy.type === '2') {
+        enemy.vy = -4;
+      }
+      enemy.jumpCooldown = 0;
+      enemy.jumpInterval = 800 + Math.random() * 2200;
+    }
+  }
+}
+
+function drawEnemies() {
+  for (let enemy of enemies) {
+    if (!enemy.alive) continue;
+    // Draw with the correct color
+    ctx.fillStyle =
+      enemy.type === '1' ? tileColors['1'] :
+      enemy.type === '2' ? tileColors['2'] :
+      "#000";
+    ctx.fillRect(enemy.x - cameraX, enemy.y - cameraY, tileSize, tileSize);
+    ctx.fillStyle = "#222";
+    ctx.font = "16px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(enemy.type === '1' ? "S" : "D", enemy.x - cameraX + tileSize/2, enemy.y - cameraY + tileSize/2);
+  }
+}
+
 // === MOVING PLATFORM SYSTEM ===
 const platformIDs = 'abcdefghij'.split('');
 const endpointAChar = id => id + 'A';
@@ -93,7 +412,6 @@ function scanMovingPlatforms() {
   movingPlatforms = [];
   for (let id of platformIDs) {
     let aPos = null, bPos = null, length = 0, vertical = false;
-    // Find endpoints
     for (let y = 0; y < level.length; y++) {
       for (let x = 0; x < level[y].length; x++) {
         if (level[y].substr(x, 2) === endpointAChar(id)) aPos = {x, y};
@@ -102,17 +420,18 @@ function scanMovingPlatforms() {
     }
     if (!aPos || !bPos) continue;
     vertical = (aPos.x === bPos.x);
-    // Count length
+
     if (vertical) {
-      length = 0;
-      for (let y = Math.min(aPos.y, bPos.y)+1; y < Math.max(aPos.y, bPos.y); y++)
-        if (level[y][aPos.x] === id) length++;
+      length = 1;
     } else {
+      let minX = Math.min(aPos.x, bPos.x);
+      let maxX = Math.max(aPos.x, bPos.x);
       length = 0;
-      for (let x = Math.min(aPos.x, bPos.x)+2; x < Math.max(aPos.x, bPos.x); x++)
+      for (let x = minX + 1; x < maxX; x++) {
         if (level[aPos.y][x] === id) length++;
+      }
+      if (length === 0) length = 1;
     }
-    if (length === 0) continue;
     movingPlatforms.push({
       id,
       vertical,
@@ -122,14 +441,14 @@ function scanMovingPlatforms() {
       timer: 0,
       direction: 1,
       pos: vertical ? aPos.y+1 : aPos.x+2,
-      lastPos: vertical ? aPos.y+1 : aPos.x+2 // initialize
+      lastPos: vertical ? aPos.y+1 : aPos.x+2
     });
   }
 }
 
 function updateMovingPlatforms(delta) {
   for (let p of movingPlatforms) {
-    p.lastPos = p.pos; // store old pos for delta calculation
+    p.lastPos = p.pos;
     const waitTime = 3000, moveTime = 5000;
     if (p.t === 0) {
       p.timer += delta;
@@ -159,6 +478,8 @@ let spinningState = {
   flipAngle: 0
 };
 let fallingThroughSpin = false;
+let fallingThroughAnyPlatform = false;
+let fallingThroughUntilY = null;
 
 function scanCoins() {
   coins = [];
@@ -183,6 +504,9 @@ function resetPlayerToStart() {
         cameraX = 0;
         cameraY = 0;
         fallingThroughSpin = false;
+        fallingThroughAnyPlatform = false;
+        fallingThroughUntilY = null;
+        stompInvulnTimer = 0;
         return;
       }
     }
@@ -198,13 +522,22 @@ function loadLevel(n) {
   resetPlayerToStart();
   scanCoins();
   scanMovingPlatforms();
+  scanEnemies();
+  scanTriggers();
+  resetTriggers();
   spinningState = { time: 0, flipping: false, flipAngle: 0 };
   fallingThroughSpin = false;
+  fallingThroughAnyPlatform = false;
+  fallingThroughUntilY = null;
+  stompInvulnTimer = 0;
 }
 
 resetPlayerToStart();
 scanCoins();
 scanMovingPlatforms();
+scanEnemies();
+scanTriggers();
+resetTriggers();
 
 const keys = { left: false, right: false, jump: false };
 
@@ -215,15 +548,22 @@ controlButtons.forEach(btn => {
   btn.addEventListener('touchstart', e => e.preventDefault());
 });
 
-document.querySelector('.left').addEventListener('touchstart', () => keys.left = true);
+document.querySelector('.left').addEventListener('touchstart', () => {
+  keys.left = true;
+  tryDismissTrigger('left');
+});
 document.querySelector('.left').addEventListener('touchend', () => keys.left = false);
-document.querySelector('.right').addEventListener('touchstart', () => keys.right = true);
+document.querySelector('.right').addEventListener('touchstart', () => {
+  keys.right = true;
+  tryDismissTrigger('right');
+});
 document.querySelector('.right').addEventListener('touchend', () => keys.right = false);
 document.querySelector('.jump').addEventListener('touchstart', () => {
   if (player.grounded) {
     player.dy = -player.jumpPower;
     player.grounded = false;
   }
+  tryDismissTrigger('jump');
 });
 
 function collectCoin(coinList, tileChar, inventoryChange) {
@@ -273,6 +613,15 @@ function isSpinningPlatformSolid() {
 }
 
 function checkCollision(x, y) {
+  if (stompInvulnTimer > 0) return false;
+  if (fallingThroughAnyPlatform) {
+    if (y + player.height < fallingThroughUntilY) {
+      return false;
+    } else {
+      fallingThroughAnyPlatform = false;
+    }
+  }
+
   const corners = [
     [x, y],
     [x + player.width, y],
@@ -290,13 +639,15 @@ function checkCollision(x, y) {
     for (let p of movingPlatforms) {
       let px, py, w, h;
       if (p.vertical) {
-        px = p.aPos.x * tileSize;
+        px = (p.aPos.x - 2.5) * tileSize;
         py = p.pos * tileSize;
-        w = tileSize; h = p.length * tileSize;
+        w = 6 * tileSize;
+        h = tileSize;
       } else {
         px = p.pos * tileSize;
         py = p.aPos.y * tileSize;
-        w = p.length * tileSize; h = tileSize;
+        w = p.length * tileSize;
+        h = tileSize;
       }
       if (
         cx >= px && cx < px + w &&
@@ -309,17 +660,16 @@ function checkCollision(x, y) {
   return false;
 }
 
-// --- PLATFORM RIDING HELPERS ---
-let microJumpActive = false; // Tracks if the micro-jump is in progress
+let microJumpActive = false;
 
 function getPlayerStandingPlatform() {
   for (let p of movingPlatforms) {
     let px, py, w, h;
     if (p.vertical) {
-      px = p.aPos.x * tileSize;
+      px = (p.aPos.x - 2.5) * tileSize;
       py = p.pos * tileSize;
-      w = tileSize;
-      h = p.length * tileSize;
+      w = 6 * tileSize;
+      h = tileSize;
       const platformTop = py;
       if (
         player.x + player.width > px &&
@@ -346,20 +696,25 @@ function getPlayerStandingPlatform() {
   return null;
 }
 
-// --- Player update with riding, snapping, and micro-jump logic ---
+function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+  return ax < bx + bw &&
+         ax + aw > bx &&
+         ay < by + bh &&
+         ay + ah > by;
+}
+
 function updatePlayer() {
+  if (stompInvulnTimer > 0) stompInvulnTimer--;
+
   player.dx = 0;
   if (keys.left) player.dx = -player.speed;
   if (keys.right) player.dx = player.speed;
 
-  // Gravity
   player.dy += 0.4;
 
-  // Move horizontally
   player.x += player.dx;
   if (checkCollision(player.x, player.y)) player.x -= player.dx;
 
-  // Move vertically
   player.y += player.dy;
   let collided = checkCollision(player.x, player.y);
 
@@ -371,7 +726,6 @@ function updatePlayer() {
     player.grounded = false;
   }
 
-  // --- PLATFORM RIDING PHYSICS ---
   let riding = getPlayerStandingPlatform();
   if (riding) {
     let {p, px, py, w, h, vertical, platformTop} = riding;
@@ -383,33 +737,44 @@ function updatePlayer() {
       delta = (p.pos - p.lastPos) * tileSize;
       player.x += delta;
     }
-
-    // --- SNAPPING LOGIC & MICRO-JUMP ---
-    // Only snap vertically if NOT pressing jump (do not snap if already in air/jumping)
     let pressingMovement = !player.grounded;
     if (!pressingMovement) {
-      // Snap vertically ONLY (never X)
       player.y = platformTop - player.height;
       player.dy = 0;
       player.grounded = true;
-
-      // MICRO-JUMP: allow left/right to break snap
       if ((keys.left || keys.right) && !keys.jump && !microJumpActive) {
-        player.dy = -3.5; // Increase this value for more "micro-jump" effect
+        player.dy = -3.5;
         player.grounded = false;
         microJumpActive = true;
       }
-      // Once micro-jump triggers, grounded will be false, so this block won't run again until landed
     } else {
-      microJumpActive = false; // Reset
+      microJumpActive = false;
     }
   } else {
-    microJumpActive = false; // Reset
+    microJumpActive = false;
   }
 
   if (fallingThroughSpin) {
     if (!isPlayerOnAnySpinningPlatform(player.x, player.y + player.height / 2)) {
       fallingThroughSpin = false;
+    }
+  }
+
+  if (!activeTrigger) {
+    for (let symbol of triggerSymbols) {
+      if (shownTriggers[symbol]) continue;
+      for (let trig of triggers[symbol]) {
+        let tx = trig.x * tileSize, ty = trig.y * tileSize;
+        if (rectsOverlap(player.x, player.y, player.width, player.height, tx, ty, tileSize, tileSize)) {
+          activeTrigger = symbol;
+          shownTriggers[symbol] = true;
+          for (let t of triggers[symbol]) {
+            level[t.y] = level[t.y].substring(0, t.x) + ' ' + level[t.y].substring(t.x + 1);
+          }
+          break;
+        }
+      }
+      if (activeTrigger) break;
     }
   }
 
@@ -422,6 +787,50 @@ function updatePlayer() {
   });
 
   checkFinish();
+}
+
+function handlePlayerEnemyCollision() {
+  for (let i = 0; i < enemies.length; i++) {
+    const enemy = enemies[i];
+    if (!enemy.alive) continue;
+    const ex = enemy.x;
+    const ey = enemy.y;
+    const ew = tileSize;
+    const eh = tileSize;
+    const px = player.x;
+    const py = player.y;
+    const pw = player.width;
+    const ph = player.height;
+
+    if (rectsOverlap(px, py, pw, ph, ex, ey, ew, eh)) {
+      const playerBottom = py + ph;
+      const playerPrevBottom = (py - player.dy) + ph;
+      const enemyTop = ey;
+      const horizontalOverlap =
+        (px + pw > ex + ew * 0.15) && (px < ex + ew - ew * 0.15);
+
+      const topTolerance = 7;
+      if (
+        player.dy > 0 &&
+        playerPrevBottom <= enemyTop + topTolerance &&
+        playerBottom > enemyTop + topTolerance &&
+        horizontalOverlap
+      ) {
+        player.dy = -player.jumpPower * 0.8;
+        enemy.alive = false;
+        stompInvulnTimer = 8;
+        player.y = enemy.y - player.height - 1;
+        return;
+      } else {
+        fallingThroughAnyPlatform = true;
+        fallingThroughUntilY = player.y + player.height + 45;
+        let lost = Math.floor(player.coinCount * 0.4);
+        player.coinCount -= lost;
+        if (player.coinCount < 0) player.coinCount = 0;
+        return;
+      }
+    }
+  }
 }
 
 function isPlayerOnSpinningPlatform(x, y) {
@@ -456,14 +865,24 @@ function checkFinish() {
 }
 
 function drawLevel() {
+  // Draw moving platforms (always green)
   for (let p of movingPlatforms) {
-    ctx.fillStyle = tileColors[p.id] || "#0cf";
-    let px = p.vertical ? p.aPos.x * tileSize - cameraX : p.pos * tileSize - cameraX;
-    let py = p.vertical ? p.pos * tileSize - cameraY : p.aPos.y * tileSize - cameraY;
-    ctx.fillRect(px, py, p.vertical ? tileSize : p.length * tileSize, p.vertical ? p.length * tileSize : tileSize);
-    ctx.fillStyle = "#0ff";
-    ctx.fillRect(p.aPos.x * tileSize - cameraX, p.aPos.y * tileSize - cameraY, tileSize, tileSize);
-    ctx.fillRect(p.bPos.x * tileSize - cameraX, p.bPos.y * tileSize - cameraY, tileSize, tileSize);
+    ctx.fillStyle = platformGreen;
+    if (p.vertical) {
+      let px = (p.aPos.x - 2.5) * tileSize - cameraX;
+      let py = p.pos * tileSize - cameraY;
+      ctx.fillRect(px, py, 6 * tileSize, tileSize);
+      ctx.fillStyle = platformGreen;
+      ctx.fillRect((p.aPos.x - 2.5) * tileSize - cameraX, p.aPos.y * tileSize - cameraY, 6 * tileSize, tileSize);
+      ctx.fillRect((p.bPos.x - 2.5) * tileSize - cameraX, p.bPos.y * tileSize - cameraY, 6 * tileSize, tileSize);
+    } else {
+      let px = p.pos * tileSize - cameraX;
+      let py = p.aPos.y * tileSize - cameraY;
+      ctx.fillRect(px, py, p.length * tileSize, tileSize);
+      ctx.fillStyle = platformGreen;
+      ctx.fillRect(p.aPos.x * tileSize - cameraX, p.aPos.y * tileSize - cameraY, tileSize, tileSize);
+      ctx.fillRect(p.bPos.x * tileSize - cameraX, p.bPos.y * tileSize - cameraY, tileSize, tileSize);
+    }
   }
 
   const tilesWide = Math.ceil(canvas.width / tileSize);
@@ -503,7 +922,7 @@ function drawLevel() {
         );
         ctx.restore();
       } else if (char !== ' ') {
-        const color = tileColors[char] || '#000';
+        let color = tileColors[char] || '#000';
         ctx.fillStyle = color;
         ctx.fillRect(x * tileSize - cameraX, y * tileSize - cameraY, tileSize, tileSize);
         x++;
@@ -571,10 +990,14 @@ function gameLoop() {
   updateSpinningState(delta);
   updateMovingPlatforms(delta);
   updatePlayer();
+  handlePlayerEnemyCollision();
+  updateEnemies(delta);
   updateCamera();
   drawLevel();
   drawPlayer();
+  drawEnemies();
   updateDebug();
+  drawTriggerOverlay();
   requestAnimationFrame(gameLoop);
 }
 
