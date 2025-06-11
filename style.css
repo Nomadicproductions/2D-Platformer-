@@ -8,21 +8,46 @@ body {
   overflow: hidden;
   -webkit-user-select: none;
   user-select: none;
+  min-height: 100vh;
+}
+
+#gameContainer {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 canvas {
   border: 2px solid #333;
   image-rendering: pixelated;
-  max-width: 100%;
+  max-width: 100vw;
+  max-height: 80vh;
+  width: 100vw;
   height: auto;
+  display: block;
+  margin: 0 auto;
 }
 
 #controls {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 2vw;
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 20px;
-  margin-top: 10px;
-  padding: 10px;
+  z-index: 10;
+  padding: 10px 0;
+  width: 100vw;
+  background: transparent;
+  pointer-events: none;
 }
 
 .control-btn {
@@ -39,6 +64,7 @@ canvas {
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
+  pointer-events: auto;
 }
 
 .control-btn.jump {
@@ -47,6 +73,7 @@ canvas {
   letter-spacing: 1px;
 }
 
+/* Debug info stays top left */
 #debug {
   position: absolute;
   top: 8px;
@@ -58,16 +85,85 @@ canvas {
   padding: 6px 10px;
   border-radius: 4px;
   white-space: pre;
+  z-index: 20;
 }
 
+/* Mobile (portrait) */
 @media screen and (max-width: 600px) {
+  #controls {
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 8vw;
+    bottom: 2vw;
+    width: 100vw;
+    padding: 0 3vw;
+  }
   .control-btn {
     font-size: 32px;
     padding: 18px;
     min-width: 100px;
+    min-height: 60px;
   }
-
   .control-btn.jump {
     font-size: 14px;
   }
 }
+
+/* Tablet portrait */
+@media screen and (min-width: 601px) and (max-width: 900px) and (orientation: portrait) {
+  #controls {
+    flex-direction: row;
+    justify-content: space-around;
+    gap: 12vw;
+    bottom: 3vw;
+    width: 100vw;
+    padding: 0 8vw;
+  }
+  .control-btn {
+    font-size: 36px;
+    padding: 22px 28px;
+    min-width: 120px;
+    min-height: 70px;
+  }
+  .control-btn.jump {
+    font-size: 18px;
+  }
+}
+
+/* Tablet landscape */
+@media screen and (min-width: 601px) and (max-width: 1200px) and (orientation: landscape) {
+  #controls {
+    flex-direction: row;
+    justify-content: space-evenly;
+    gap: 16vw;
+    bottom: 2vw;
+    width: 100vw;
+    padding: 0 10vw;
+  }
+  .control-btn {
+    font-size: 32px;
+    padding: 18px 24px;
+    min-width: 110px;
+    min-height: 65px;
+  }
+  .control-btn.jump {
+    font-size: 16px;
+  }
+}
+
+/* Desktop (optional, just for completeness) */
+@media screen and (min-width: 1201px) {
+  #controls {
+    gap: 100px;
+    width: 70vw;
+    left: 15vw;
+    right: 15vw;
+    bottom: 2vw;
+  }
+  .control-btn {
+    font-size: 28px;
+    min-width: 90px;
+    min-height: 60px;
+    padding: 16px 24px;
+  }
+    }
