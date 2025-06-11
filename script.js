@@ -1,50 +1,67 @@
-// ==== DEVICE-OPTIMIZED CANVAS SIZING ====
+// ==== DEVICE-OPTIMIZED CANVAS SIZING, MOBILE/TABLET PORTRAIT FOCUS ====
 
 function getDeviceType() {
   const w = window.innerWidth;
+  const h = window.innerHeight;
   if (w <= 600) return "mobile";
-  if (w > 600 && w <= 950) return "tablet-portrait";
-  if (w > 950 && w <= 1200) return "tablet-landscape";
+  if (w > 600 && w <= 1000) return "tablet";
   return "desktop";
 }
 
-// Your game's designed aspect ratio (width/height)
-const GAME_ASPECT = 960 / 640; // 3:2
+// Your game's desired aspect ratio (show more level: 960/540 is a bit more zoomed out than before)
+const GAME_ASPECT = 960 / 540;
 
 function fitGameCanvas() {
   const controls = document.getElementById("controls");
   const canvas = document.getElementById("gameCanvas");
-
-  // Estimate the vertical space used by controls
-  let controlsHeight = controls.offsetHeight || 80;
   const device = getDeviceType();
-  if (device === "mobile") controlsHeight = 70;
-  else if (device.startsWith("tablet")) controlsHeight = 90;
-  else controlsHeight = 80;
+  const portrait = window.innerHeight > window.innerWidth;
 
-  // Room for canvas: all viewport minus controls at bottom
+  if (!portrait) {
+    // Hide canvas and controls in landscape
+    canvas.style.display = "none";
+    controls.style.display = "none";
+    document.body.style.background = "#222";
+    return;
+  } else {
+    canvas.style.display = "block";
+    controls.style.display = "flex";
+    document.body.style.background = "#87CEFA";
+  }
+
+  // Get the height of the controls
+  const controlsHeight = controls.offsetHeight || (device === "mobile" ? window.innerHeight * 0.20 : window.innerHeight * 0.17);
+
+  // Calculate available height and width for canvas
+  const availH = window.innerHeight - controlsHeight - 16; // -16 for some margin
   const availW = window.innerWidth;
-  const availH = window.innerHeight - controlsHeight - 4;
   let targetW = availW;
   let targetH = availH;
 
-  // Fit aspect ratio
+  // Fit aspect ratio (zoom out a bit more)
   if (targetW / targetH > GAME_ASPECT) {
     targetW = Math.round(targetH * GAME_ASPECT);
   } else {
     targetH = Math.round(targetW / GAME_ASPECT);
   }
 
+  // Center canvas horizontally
   canvas.style.width = targetW + "px";
   canvas.style.height = targetH + "px";
   canvas.width = 960;
-  canvas.height = 640;
+  canvas.height = 540;
 
-  // Center vertically if possible
-  const container = document.getElementById("gameContainer");
-  container.style.justifyContent = "flex-start";
-  canvas.style.display = "block";
-  canvas.style.margin = "0 auto";
+  // Center vertically with margin at top (looks better)
+  if (device === "mobile") {
+    canvas.style.marginTop = "3vh";
+    canvas.style.marginBottom = "1vh";
+  } else if (device === "tablet") {
+    canvas.style.marginTop = "5vh";
+    canvas.style.marginBottom = "2vh";
+  } else {
+    canvas.style.marginTop = "4vh";
+    canvas.style.marginBottom = "0";
+  }
 }
 
 window.addEventListener("resize", fitGameCanvas);
@@ -170,7 +187,6 @@ const levels = [
     "# S           !       $        #        !    E          x                                          #",
     "####################################################################################################"
   ],
-  // 8 new 6x6 blank levels with just start and finish
   [
     "######",
     "#    #",
@@ -887,37 +903,6 @@ function updateCamera() {
   cameraX += (targetX - cameraX) * 0.05;
   cameraY += (targetY - cameraY) * 0.05;
 }
-const debug = document.getElementById('debug');
-let lastTime = performance.now();
-let frameCount = 0;
-let fps = 0;
-function updateDebug() {
-  frameCount++;
-  const now = performance.now();
-  const delta = now - lastTime;
-  if (delta >= 1000) {
-    fps = frameCount;
-    frameCount = 0;
-    lastTime = now;
-  }
-  let memory = 'N/A';
-  if (performance.memory) {
-    const usedMB = performance.memory.usedJSHeapSize / 1048576;
-    memory = `${usedMB.toFixed(2)} MB`;
-  }
-  debug.innerText = `
-Level: ${currentLevel + 1}/${levels.length}
-Coins: ${player.coinCount}
-X: ${player.x.toFixed(1)}
-Y: ${player.y.toFixed(1)}
-dx: ${player.dx.toFixed(1)}
-dy: ${player.dy.toFixed(1)}
-Grounded: ${player.grounded}
-Keys: ${JSON.stringify(keys)}
-FPS: ${fps}
-Memory: ${memory}
-  `.trim();
-}
 let prevTime = performance.now();
 function gameLoop() {
   const now = performance.now();
@@ -933,7 +918,6 @@ function gameLoop() {
   drawLevel();
   drawPlayer();
   drawEnemies();
-  updateDebug();
   drawTriggerOverlay();
   requestAnimationFrame(gameLoop);
 }
