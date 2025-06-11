@@ -1,52 +1,60 @@
-body {
+html, body {
   margin: 0;
-  background-color: #87CEFA;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  touch-action: manipulation;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  background: #87CEFA;
   overflow: hidden;
-  -webkit-user-select: none;
-  user-select: none;
+}
+
+body, #gameContainer {
+  width: 100vw;
+  height: 100vh;
   min-height: 100vh;
+  min-width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
 }
 
 #gameContainer {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
-  max-width: 100vw;
-  max-height: 100vh;
-  display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
+  height: 100vh;
+  width: 100vw;
+  position: relative;
 }
 
-canvas {
-  border: 2px solid #333;
-  image-rendering: pixelated;
-  max-width: 100vw;
-  max-height: 80vh;
-  width: 100vw;
-  height: auto;
+#gameCanvas {
   display: block;
   margin: 0 auto;
+  background: #222;
+  border: 2px solid #333;
+  box-sizing: border-box;
+  /* Will be sized via JS for max area */
+  max-width: 100vw;
+  max-height: 100vh;
+  width: 100%;
+  height: auto;
 }
 
+/* Controls always at bottom, never overlap canvas */
 #controls {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 2vw;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 20px;
-  z-index: 10;
-  padding: 10px 0;
+  bottom: 0;
+  height: auto;
   width: 100vw;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: flex-end;
   background: transparent;
+  z-index: 10;
+  padding-bottom: 2vw;
   pointer-events: none;
 }
 
@@ -59,7 +67,8 @@ canvas {
   border-radius: 12px;
   box-shadow: 0 4px 8px rgba(0,0,0,0.3);
   cursor: pointer;
-  min-width: 90px;
+  min-width: 80px;
+  min-height: 60px;
   transition: background-color 0.2s;
   touch-action: none;
   -webkit-user-select: none;
@@ -69,11 +78,10 @@ canvas {
 
 .control-btn.jump {
   font-family: 'Press Start 2P', cursive;
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 1px;
 }
 
-/* Debug info stays top left */
 #debug {
   position: absolute;
   top: 8px;
@@ -88,82 +96,44 @@ canvas {
   z-index: 20;
 }
 
-/* Mobile (portrait) */
-@media screen and (max-width: 600px) {
-  #controls {
-    flex-direction: row;
-    justify-content: space-between;
-    gap: 8vw;
-    bottom: 2vw;
-    width: 100vw;
-    padding: 0 3vw;
-  }
+/* Mobile */
+@media (max-width: 600px) {
   .control-btn {
-    font-size: 32px;
-    padding: 18px;
-    min-width: 100px;
-    min-height: 60px;
+    font-size: 28px;
+    padding: 14px;
+    min-width: 64px;
+    min-height: 52px;
   }
   .control-btn.jump {
-    font-size: 14px;
+    font-size: 12px;
   }
 }
 
 /* Tablet portrait */
-@media screen and (min-width: 601px) and (max-width: 900px) and (orientation: portrait) {
-  #controls {
-    flex-direction: row;
-    justify-content: space-around;
-    gap: 12vw;
-    bottom: 3vw;
-    width: 100vw;
-    padding: 0 8vw;
-  }
+@media (min-width: 601px) and (max-width: 950px) and (orientation: portrait) {
   .control-btn {
     font-size: 36px;
-    padding: 22px 28px;
-    min-width: 120px;
+    padding: 18px 26px;
+    min-width: 110px;
     min-height: 70px;
-  }
-  .control-btn.jump {
-    font-size: 18px;
   }
 }
 
 /* Tablet landscape */
-@media screen and (min-width: 601px) and (max-width: 1200px) and (orientation: landscape) {
-  #controls {
-    flex-direction: row;
-    justify-content: space-evenly;
-    gap: 16vw;
-    bottom: 2vw;
-    width: 100vw;
-    padding: 0 10vw;
-  }
+@media (min-width: 601px) and (max-width: 1200px) and (orientation: landscape) {
   .control-btn {
     font-size: 32px;
-    padding: 18px 24px;
-    min-width: 110px;
+    padding: 16px 22px;
+    min-width: 90px;
     min-height: 65px;
-  }
-  .control-btn.jump {
-    font-size: 16px;
   }
 }
 
-/* Desktop (optional, just for completeness) */
-@media screen and (min-width: 1201px) {
-  #controls {
-    gap: 100px;
-    width: 70vw;
-    left: 15vw;
-    right: 15vw;
-    bottom: 2vw;
-  }
+@media (min-width: 1201px) {
   .control-btn {
     font-size: 28px;
     min-width: 90px;
     min-height: 60px;
     padding: 16px 24px;
   }
-    }
+}
