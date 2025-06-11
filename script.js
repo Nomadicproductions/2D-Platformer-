@@ -1,41 +1,57 @@
-// ==== DEVICE LAYOUT OPTIMISATION ====
+// ==== DEVICE-OPTIMIZED CANVAS SIZING ====
+
 function getDeviceType() {
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  if (width <= 600) return "mobile";
-  if (width > 600 && width <= 900) return "tablet-portrait";
-  if (width > 900 && width <= 1200) return "tablet-landscape";
+  const w = window.innerWidth;
+  if (w <= 600) return "mobile";
+  if (w > 600 && w <= 950) return "tablet-portrait";
+  if (w > 950 && w <= 1200) return "tablet-landscape";
   return "desktop";
 }
 
-function optimiseLayout() {
-  const device = getDeviceType();
-  const canvas = document.getElementById("gameCanvas");
-  const controls = document.getElementById("controls");
-  // Remove previous device classes if present
-  controls.classList.remove("mobile", "tablet-portrait", "tablet-landscape", "desktop");
-  controls.classList.add(device);
+// Your game's designed aspect ratio (width/height)
+const GAME_ASPECT = 960 / 640; // 3:2
 
-  // Optionally, adjust canvas height for device
-  if (device === "mobile") {
-    canvas.width = window.innerWidth;
-    canvas.height = Math.round(window.innerHeight * 0.70);
-  } else if (device.startsWith("tablet")) {
-    canvas.width = window.innerWidth;
-    canvas.height = Math.round(window.innerHeight * 0.75);
+function fitGameCanvas() {
+  const controls = document.getElementById("controls");
+  const canvas = document.getElementById("gameCanvas");
+
+  // Estimate the vertical space used by controls
+  let controlsHeight = controls.offsetHeight || 80;
+  const device = getDeviceType();
+  if (device === "mobile") controlsHeight = 70;
+  else if (device.startsWith("tablet")) controlsHeight = 90;
+  else controlsHeight = 80;
+
+  // Room for canvas: all viewport minus controls at bottom
+  const availW = window.innerWidth;
+  const availH = window.innerHeight - controlsHeight - 4;
+  let targetW = availW;
+  let targetH = availH;
+
+  // Fit aspect ratio
+  if (targetW / targetH > GAME_ASPECT) {
+    targetW = Math.round(targetH * GAME_ASPECT);
   } else {
-    canvas.width = Math.min(960, window.innerWidth * 0.9);
-    canvas.height = Math.min(640, window.innerHeight * 0.8);
+    targetH = Math.round(targetW / GAME_ASPECT);
   }
+
+  canvas.style.width = targetW + "px";
+  canvas.style.height = targetH + "px";
+  canvas.width = 960;
+  canvas.height = 640;
+
+  // Center vertically if possible
+  const container = document.getElementById("gameContainer");
+  container.style.justifyContent = "flex-start";
+  canvas.style.display = "block";
+  canvas.style.margin = "0 auto";
 }
 
-// Run on load and resize
-window.addEventListener("load", optimiseLayout);
-window.addEventListener("resize", optimiseLayout);
+window.addEventListener("resize", fitGameCanvas);
+window.addEventListener("orientationchange", fitGameCanvas);
+window.addEventListener("load", fitGameCanvas);
 
-// ==== REST OF GAME CODE ====
-
-// ----- (Everything below here is your original game code, unchanged except for optimised layout above) -----
+// ==== GAME CODE ====
 
 const tileSize = 32;
 const canvas = document.getElementById('gameCanvas');
@@ -154,6 +170,7 @@ const levels = [
     "# S           !       $        #        !    E          x                                          #",
     "####################################################################################################"
   ],
+  // 8 new 6x6 blank levels with just start and finish
   [
     "######",
     "#    #",
@@ -221,43 +238,14 @@ const levels = [
 ];
 
 // === CONTROL CHARACTERS ===
-// Colors edited as per your request:
-// - All text triggers (Q,W,E,R,T,Y,U): pink
-// - Enemy 1: yellow
-// - Enemy 2: red
-// - Horizontal/Vertical moving platforms: green
-// - Spinning platform: purple
-// - Coin and scam coin: both orange
 const tileColors = {
-  '#': '#444',      // Wall/solid
-  '-': '#b5651d',   // Brown block
-  '@': '#a020f0',   // Spinning platform (purple)
-  ' ': '#aee7ff',   // Air/empty
-  'S': '#0f0',      // Start
-  'F': '#ff9800',   // Finish
-  '$': '#ff9100',   // Coin (orange)
-  'x': '#ff9100',   // Scam coin (orange)
-  '1': '#ffe600',   // Enemy1 (yellow)
-  '2': '#e74c3c',   // Enemy2 (red)
-  '3': '#2980b9',   // Decoration/blue
-  '!': '#fff',      // Decoration/white
-
-  // Platform/decoration
-  // 'a'...'j' will be colored in drawLevel based on platform orientation
-
-  // Text triggers: all pink
-  'Q': '#ff69b4',   // Tutorial: Start point (pink)
-  'W': '#ff69b4',   // Tutorial: Coin (pink)
-  'E': '#ff69b4',   // Tutorial: Scam Coin (pink)
-  'R': '#ff69b4',   // Tutorial: Moving Platform (pink)
-  'T': '#ff69b4',   // Tutorial: Spinning Platform (pink)
-  'Y': '#ff69b4',   // Tutorial: Enemy (pink)
-  'U': '#ff69b4'    // Tutorial: End point (pink)
+  '#': '#444', '-': '#b5651d', '@': '#a020f0', ' ': '#aee7ff',
+  'S': '#0f0', 'F': '#ff9800', '$': '#ff9100', 'x': '#ff9100',
+  '1': '#ffe600', '2': '#e74c3c', '3': '#2980b9', '!': '#fff',
+  'Q': '#ff69b4', 'W': '#ff69b4', 'E': '#ff69b4', 'R': '#ff69b4',
+  'T': '#ff69b4', 'Y': '#ff69b4', 'U': '#ff69b4'
 };
-
 const platformGreen = "#00d55a";
-
-// === TUTORIAL TRIGGER SYSTEM ===
 const triggerSymbols = ['Q','W','E','R','T','Y','U'];
 const triggerMessages = {
   Q: "Start Point: This is where your journey begins. Move and jump to explore the level.",
@@ -268,11 +256,7 @@ const triggerMessages = {
   Y: "Enemy: Jump on enemies to defeat them, but avoid touching them from the side.",
   U: "End Point: Reach here to complete the level."
 };
-let triggers = {};
-let shownTriggers = {};
-let activeTrigger = null;
-let dismissCounter = 0;
-let lastKey = null;
+let triggers = {}, shownTriggers = {}, activeTrigger = null, dismissCounter = 0, lastKey = null;
 function scanTriggers() {
   triggers = {};
   shownTriggers = {};
@@ -280,9 +264,7 @@ function scanTriggers() {
   for (let y = 0; y < level.length; y++) {
     for (let x = 0; x < level[y].length; x++) {
       let char = level[y][x];
-      if (triggerSymbols.includes(char)) {
-        triggers[char].push({x, y});
-      }
+      if (triggerSymbols.includes(char)) triggers[char].push({x, y});
     }
   }
 }
@@ -295,8 +277,7 @@ function resetTriggers() {
 function tryDismissTrigger(key) {
   if (!activeTrigger) return;
   if (lastKey !== key) {
-    lastKey = key;
-    dismissCounter = 1;
+    lastKey = key; dismissCounter = 1;
   } else {
     dismissCounter++;
     if (dismissCounter >= 2) {
@@ -335,55 +316,20 @@ function drawTriggerOverlay() {
 // ---------------------------------------
 
 const player = {
-  x: 0,
-  y: 0,
-  width: tileSize * 0.8,
-  height: tileSize * 0.8,
-  color: '#00f',
-  dx: 0,
-  dy: 0,
-  speed: 2.5,
-  jumpPower: 12,
-  grounded: false,
-  coinCount: 0
+  x: 0, y: 0, width: tileSize * 0.8, height: tileSize * 0.8,
+  color: '#00f', dx: 0, dy: 0, speed: 2.5, jumpPower: 12,
+  grounded: false, coinCount: 0
 };
 
-let cameraX = 0;
-let cameraY = 0;
-
-let coins = [];
-let scamCoins = [];
-
+let cameraX = 0, cameraY = 0;
+let coins = [], scamCoins = [];
 let stompInvulnTimer = 0;
-
 let enemies = [];
-
-function findPlatformPatrolBounds(x, y, level) {
-  let left = x, right = x;
-  for (let lx = x; lx >= 0; lx--) {
-    if (
-      level[y+1] &&
-      level[y+1][lx] !== ' ' &&
-      level[y][lx] === ' '
-    ) {
-      left = lx;
-    } else if (lx !== x) {
-      break;
-    }
-  }
-  for (let rx = x; rx < level[y].length; rx++) {
-    if (
-      level[y+1] &&
-      level[y+1][rx] !== ' ' &&
-      level[y][rx] === ' '
-    ) {
-      right = rx;
-    } else if (rx !== x) {
-      break;
-    }
-  }
-  return { left, right };
-}
+const platformIDs = 'abcdefghij'.split('');
+const endpointAChar = id => id + 'A';
+const endpointBChar = id => id + 'B';
+let movingPlatforms = [], spinningState = { time: 0, flipping: false, flipAngle: 0 };
+let fallingThroughSpin = false, fallingThroughAnyPlatform = false, fallingThroughUntilY = null;
 
 function scanEnemies() {
   enemies = [];
@@ -393,31 +339,29 @@ function scanEnemies() {
       if (char === '1' || char === '2') {
         const { left, right } = findPlatformPatrolBounds(x, y, level);
         enemies.push({
-          type: char,
-          x: x * tileSize,
-          y: y * tileSize,
-          px: x,
-          py: y,
-          dir: 1,
-          patrolMin: left * tileSize,
-          patrolMax: right * tileSize,
-          speed: 1.2,
-          vy: 0,
-          grounded: false,
-          jumpCooldown: 0,
-          jumpInterval: 1000 + Math.random() * 1500,
-          alive: true
+          type: char, x: x * tileSize, y: y * tileSize, px: x, py: y, dir: 1,
+          patrolMin: left * tileSize, patrolMax: right * tileSize,
+          speed: 1.2, vy: 0, grounded: false, jumpCooldown: 0,
+          jumpInterval: 1000 + Math.random() * 1500, alive: true
         });
       }
     }
   }
 }
-
+function findPlatformPatrolBounds(x, y, level) {
+  let left = x, right = x;
+  for (let lx = x; lx >= 0; lx--) {
+    if (level[y+1] && level[y+1][lx] !== ' ' && level[y][lx] === ' ') left = lx;
+    else if (lx !== x) break;
+  }
+  for (let rx = x; rx < level[y].length; rx++) {
+    if (level[y+1] && level[y+1][rx] !== ' ' && level[y][rx] === ' ') right = rx;
+    else if (rx !== x) break;
+  }
+  return { left, right };
+}
 function isEnemyGrounded(enemy) {
-  const ex = enemy.x;
-  const ey = enemy.y;
-  const ew = tileSize;
-  const eh = tileSize;
+  const ex = enemy.x, ey = enemy.y, ew = tileSize, eh = tileSize;
   for (let dx of [2, ew - 2]) {
     const tx = Math.floor((ex + dx) / tileSize);
     const ty = Math.floor((ey + eh + 1) / tileSize);
@@ -435,64 +379,38 @@ function isEnemyGrounded(enemy) {
         w = p.length * tileSize;
         h = tileSize;
       }
-      if (
-        ex + dx >= px &&
-        ex + dx < px + w &&
-        ey + eh + 1 >= py &&
-        ey + eh + 1 < py + h
-      ) {
-        return true;
-      }
+      if (ex + dx >= px && ex + dx < px + w && ey + eh + 1 >= py && ey + eh + 1 < py + h) return true;
     }
   }
   return false;
 }
-
 function updateEnemies(delta) {
   for (let enemy of enemies) {
     if (!enemy.alive) continue;
-
     enemy.x += enemy.dir * enemy.speed;
-    if (enemy.x < enemy.patrolMin) {
-      enemy.x = enemy.patrolMin;
-      enemy.dir = 1;
-    }
-    if (enemy.x > enemy.patrolMax) {
-      enemy.x = enemy.patrolMax;
-      enemy.dir = -1;
-    }
-
+    if (enemy.x < enemy.patrolMin) { enemy.x = enemy.patrolMin; enemy.dir = 1; }
+    if (enemy.x > enemy.patrolMax) { enemy.x = enemy.patrolMax; enemy.dir = -1; }
     enemy.vy += 0.4;
     enemy.y += enemy.vy;
-
     if (isEnemyGrounded(enemy)) {
       enemy.y = Math.floor((enemy.y + tileSize) / tileSize) * tileSize - tileSize;
-      enemy.vy = 0;
-      enemy.grounded = true;
+      enemy.vy = 0; enemy.grounded = true;
     } else {
       enemy.grounded = false;
     }
-
     enemy.jumpCooldown += delta;
     if (enemy.grounded && enemy.jumpCooldown > enemy.jumpInterval) {
-      if (enemy.type === '1') {
-        enemy.vy = -2;
-      } else if (enemy.type === '2') {
-        enemy.vy = -4;
-      }
+      if (enemy.type === '1') enemy.vy = -2;
+      else if (enemy.type === '2') enemy.vy = -4;
       enemy.jumpCooldown = 0;
       enemy.jumpInterval = 800 + Math.random() * 2200;
     }
   }
 }
-
 function drawEnemies() {
   for (let enemy of enemies) {
     if (!enemy.alive) continue;
-    ctx.fillStyle =
-      enemy.type === '1' ? tileColors['1'] :
-      enemy.type === '2' ? tileColors['2'] :
-      "#000";
+    ctx.fillStyle = enemy.type === '1' ? tileColors['1'] : enemy.type === '2' ? tileColors['2'] : "#000";
     ctx.fillRect(enemy.x - cameraX, enemy.y - cameraY, tileSize, tileSize);
     ctx.fillStyle = "#222";
     ctx.font = "16px Arial";
@@ -501,12 +419,6 @@ function drawEnemies() {
     ctx.fillText(enemy.type === '1' ? "S" : "D", enemy.x - cameraX + tileSize/2, enemy.y - cameraY + tileSize/2);
   }
 }
-
-const platformIDs = 'abcdefghij'.split('');
-const endpointAChar = id => id + 'A';
-const endpointBChar = id => id + 'B';
-let movingPlatforms = [];
-
 function scanMovingPlatforms() {
   movingPlatforms = [];
   for (let id of platformIDs) {
@@ -519,7 +431,6 @@ function scanMovingPlatforms() {
     }
     if (!aPos || !bPos) continue;
     vertical = (aPos.x === bPos.x);
-
     if (vertical) {
       length = 1;
     } else {
@@ -532,19 +443,13 @@ function scanMovingPlatforms() {
       if (length === 0) length = 1;
     }
     movingPlatforms.push({
-      id,
-      vertical,
-      aPos, bPos,
-      length,
-      t: 0,
-      timer: 0,
-      direction: 1,
+      id, vertical, aPos, bPos, length,
+      t: 0, timer: 0, direction: 1,
       pos: vertical ? aPos.y+1 : aPos.x+2,
       lastPos: vertical ? aPos.y+1 : aPos.x+2
     });
   }
 }
-
 function updateMovingPlatforms(delta) {
   for (let p of movingPlatforms) {
     p.lastPos = p.pos;
@@ -569,17 +474,6 @@ function updateMovingPlatforms(delta) {
     }
   }
 }
-
-// === SPINNING PLATFORM SYSTEM ===
-let spinningState = {
-  time: 0,
-  flipping: false,
-  flipAngle: 0
-};
-let fallingThroughSpin = false;
-let fallingThroughAnyPlatform = false;
-let fallingThroughUntilY = null;
-
 function scanCoins() {
   coins = [];
   scamCoins = [];
@@ -590,18 +484,14 @@ function scanCoins() {
     }
   }
 }
-
 function resetPlayerToStart() {
   for (let y = 0; y < level.length; y++) {
     for (let x = 0; x < level[y].length; x++) {
       if (level[y][x] === 'S') {
         player.x = x * tileSize;
         player.y = y * tileSize;
-        player.dx = 0;
-        player.dy = 0;
-        player.grounded = false;
-        cameraX = 0;
-        cameraY = 0;
+        player.dx = 0; player.dy = 0; player.grounded = false;
+        cameraX = 0; cameraY = 0;
         fallingThroughSpin = false;
         fallingThroughAnyPlatform = false;
         fallingThroughUntilY = null;
@@ -611,10 +501,8 @@ function resetPlayerToStart() {
     }
   }
 }
-
 let currentLevel = 0;
 let level = levels[currentLevel];
-
 function loadLevel(n) {
   currentLevel = n;
   level = levels[currentLevel];
@@ -630,7 +518,6 @@ function loadLevel(n) {
   fallingThroughUntilY = null;
   stompInvulnTimer = 0;
 }
-
 resetPlayerToStart();
 scanCoins();
 scanMovingPlatforms();
@@ -646,15 +533,12 @@ controlButtons.forEach(btn => {
   btn.addEventListener('mousedown', e => e.preventDefault());
   btn.addEventListener('touchstart', e => e.preventDefault());
 });
-
 document.querySelector('.left').addEventListener('touchstart', () => {
-  keys.left = true;
-  tryDismissTrigger('left');
+  keys.left = true; tryDismissTrigger('left');
 });
 document.querySelector('.left').addEventListener('touchend', () => keys.left = false);
 document.querySelector('.right').addEventListener('touchstart', () => {
-  keys.right = true;
-  tryDismissTrigger('right');
+  keys.right = true; tryDismissTrigger('right');
 });
 document.querySelector('.right').addEventListener('touchend', () => keys.right = false);
 document.querySelector('.jump').addEventListener('touchstart', () => {
@@ -686,7 +570,6 @@ function collectCoin(coinList, tileChar, inventoryChange) {
   }
   return false;
 }
-
 function updateSpinningState(delta) {
   spinningState.time += delta;
   if (!spinningState.flipping && spinningState.time >= 3000) {
@@ -706,21 +589,15 @@ function updateSpinningState(delta) {
     }
   }
 }
-
 function isSpinningPlatformSolid() {
   return !spinningState.flipping && !fallingThroughSpin;
 }
-
 function checkCollision(x, y) {
   if (stompInvulnTimer > 0) return false;
   if (fallingThroughAnyPlatform) {
-    if (y + player.height < fallingThroughUntilY) {
-      return false;
-    } else {
-      fallingThroughAnyPlatform = false;
-    }
+    if (y + player.height < fallingThroughUntilY) return false;
+    else fallingThroughAnyPlatform = false;
   }
-
   const corners = [
     [x, y],
     [x + player.width, y],
@@ -758,9 +635,7 @@ function checkCollision(x, y) {
   }
   return false;
 }
-
 let microJumpActive = false;
-
 function getPlayerStandingPlatform() {
   for (let p of movingPlatforms) {
     let px, py, w, h;
@@ -794,29 +669,22 @@ function getPlayerStandingPlatform() {
   }
   return null;
 }
-
 function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
   return ax < bx + bw &&
          ax + aw > bx &&
          ay < by + bh &&
          ay + ah > by;
 }
-
 function updatePlayer() {
   if (stompInvulnTimer > 0) stompInvulnTimer--;
-
   player.dx = 0;
   if (keys.left) player.dx = -player.speed;
   if (keys.right) player.dx = player.speed;
-
   player.dy += 0.4;
-
   player.x += player.dx;
   if (checkCollision(player.x, player.y)) player.x -= player.dx;
-
   player.y += player.dy;
   let collided = checkCollision(player.x, player.y);
-
   if (collided) {
     player.y -= player.dy;
     if (player.dy > 0) player.grounded = true;
@@ -824,7 +692,6 @@ function updatePlayer() {
   } else {
     player.grounded = false;
   }
-
   let riding = getPlayerStandingPlatform();
   if (riding) {
     let {p, px, py, w, h, vertical, platformTop} = riding;
@@ -852,13 +719,11 @@ function updatePlayer() {
   } else {
     microJumpActive = false;
   }
-
   if (fallingThroughSpin) {
     if (!isPlayerOnAnySpinningPlatform(player.x, player.y + player.height / 2)) {
       fallingThroughSpin = false;
     }
   }
-
   if (!activeTrigger) {
     for (let symbol of triggerSymbols) {
       if (shownTriggers[symbol]) continue;
@@ -876,7 +741,6 @@ function updatePlayer() {
       if (activeTrigger) break;
     }
   }
-
   collectCoin(coins, '$', () => { player.coinCount++; });
   collectCoin(scamCoins, 'x', () => {
     if (player.coinCount > 0) {
@@ -884,30 +748,19 @@ function updatePlayer() {
       if (player.coinCount < 0) player.coinCount = 0;
     }
   });
-
   checkFinish();
 }
-
 function handlePlayerEnemyCollision() {
   for (let i = 0; i < enemies.length; i++) {
     const enemy = enemies[i];
     if (!enemy.alive) continue;
-    const ex = enemy.x;
-    const ey = enemy.y;
-    const ew = tileSize;
-    const eh = tileSize;
-    const px = player.x;
-    const py = player.y;
-    const pw = player.width;
-    const ph = player.height;
-
+    const ex = enemy.x, ey = enemy.y, ew = tileSize, eh = tileSize;
+    const px = player.x, py = player.y, pw = player.width, ph = player.height;
     if (rectsOverlap(px, py, pw, ph, ex, ey, ew, eh)) {
       const playerBottom = py + ph;
       const playerPrevBottom = (py - player.dy) + ph;
       const enemyTop = ey;
-      const horizontalOverlap =
-        (px + pw > ex + ew * 0.15) && (px < ex + ew - ew * 0.15);
-
+      const horizontalOverlap = (px + pw > ex + ew * 0.15) && (px < ex + ew - ew * 0.15);
       const topTolerance = 7;
       if (
         player.dy > 0 &&
@@ -931,7 +784,6 @@ function handlePlayerEnemyCollision() {
     }
   }
 }
-
 function isPlayerOnSpinningPlatform(x, y) {
   const tx1 = Math.floor(x / tileSize);
   const tx2 = Math.floor((x + player.width - 1) / tileSize);
@@ -941,7 +793,6 @@ function isPlayerOnSpinningPlatform(x, y) {
     !spinningState.flipping
   );
 }
-
 function isPlayerOnAnySpinningPlatform(x, y) {
   const tx1 = Math.floor(x / tileSize);
   const tx2 = Math.floor((x + player.width - 1) / tileSize);
@@ -950,7 +801,6 @@ function isPlayerOnAnySpinningPlatform(x, y) {
     (level[ty] && (level[ty][tx1] === '@' || level[ty][tx2] === '@'))
   );
 }
-
 function checkFinish() {
   const px = Math.floor((player.x + player.width / 2) / tileSize);
   const py = Math.floor((player.y + player.height / 2) / tileSize);
@@ -962,7 +812,6 @@ function checkFinish() {
     }
   }
 }
-
 function drawLevel() {
   for (let p of movingPlatforms) {
     ctx.fillStyle = platformGreen;
@@ -982,14 +831,12 @@ function drawLevel() {
       ctx.fillRect(p.bPos.x * tileSize - cameraX, p.bPos.y * tileSize - cameraY, tileSize, tileSize);
     }
   }
-
   const tilesWide = Math.ceil(canvas.width / tileSize);
   const tilesHigh = Math.ceil(canvas.height / tileSize);
   const startCol = Math.max(0, Math.floor(cameraX / tileSize));
   const endCol = Math.min(level[0].length, startCol + tilesWide + 2);
   const startRow = Math.max(0, Math.floor(cameraY / tileSize));
   const endRow = Math.min(level.length, startRow + tilesHigh + 2);
-
   for (let y = startRow; y < endRow; y++) {
     let x = startCol;
     while (x < endCol) {
@@ -1030,24 +877,20 @@ function drawLevel() {
     }
   }
 }
-
 function drawPlayer() {
   ctx.fillStyle = player.color;
   ctx.fillRect(player.x - cameraX, player.y - cameraY, player.width, player.height);
 }
-
 function updateCamera() {
   const targetX = player.x + player.width / 2 - canvas.width / 2;
   const targetY = player.y + player.height / 2 - canvas.height / 2;
   cameraX += (targetX - cameraX) * 0.05;
   cameraY += (targetY - cameraY) * 0.05;
 }
-
 const debug = document.getElementById('debug');
 let lastTime = performance.now();
 let frameCount = 0;
 let fps = 0;
-
 function updateDebug() {
   frameCount++;
   const now = performance.now();
@@ -1057,13 +900,11 @@ function updateDebug() {
     frameCount = 0;
     lastTime = now;
   }
-
   let memory = 'N/A';
   if (performance.memory) {
     const usedMB = performance.memory.usedJSHeapSize / 1048576;
     memory = `${usedMB.toFixed(2)} MB`;
   }
-
   debug.innerText = `
 Level: ${currentLevel + 1}/${levels.length}
 Coins: ${player.coinCount}
@@ -1077,13 +918,11 @@ FPS: ${fps}
 Memory: ${memory}
   `.trim();
 }
-
 let prevTime = performance.now();
 function gameLoop() {
   const now = performance.now();
   const delta = now - prevTime;
   prevTime = now;
-
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   updateSpinningState(delta);
   updateMovingPlatforms(delta);
@@ -1098,5 +937,4 @@ function gameLoop() {
   drawTriggerOverlay();
   requestAnimationFrame(gameLoop);
 }
-
 gameLoop();
