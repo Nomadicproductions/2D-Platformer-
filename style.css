@@ -94,6 +94,13 @@ body, #gameContainer {
 .introText p {
   margin-bottom: 2em;
 }
+//* For mobile screens, make it even smaller */
+@media (max-width: 600px) {
+  .introText {
+    font-size: 0.5em;
+    padding: 1em;
+  }
+}
 
 /* Hide debug if present */
 #debug { display: none !important; }
