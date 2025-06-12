@@ -41,6 +41,14 @@ body, #gameContainer {
   pointer-events: none;
 }
 
+/* On mobile: show entire image (may have bars) */
+@media (max-width: 600px) and (orientation: portrait) {
+  .bg-image {
+    object-fit: contain;
+    background: #000; /* set a fallback bg color */
+  }
+}
+
 /* Retro Start/Continue Button Style with transparency */
 .big-retro-btn {
   z-index: 2;
@@ -206,4 +214,4 @@ body, #gameContainer {
     margin-top: 4vh;
     margin-bottom: 0;
   }
-    }
+  }
