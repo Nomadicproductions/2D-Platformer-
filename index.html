@@ -8,7 +8,26 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="gameContainer">
+  <!-- Start Page -->
+  <div id="startPage" class="fullscreen-overlay">
+    <img src="assets/file_0000000029dc61f8b10c6b03b7b1728e.png" class="bg-image" alt="Start Background"/>
+    <button id="startBtn" class="big-retro-btn">START GAME</button>
+  </div>
+  <!-- Intro Page -->
+  <div id="introPage" class="fullscreen-overlay" style="display:none;">
+    <img src="assets/25740e85-963a-4a8d-96ae-16455a0ec1bb_20250612_200426_0000.png" class="bg-image" alt="Intro Background"/>
+    <div class="introText">
+      <h2>Welcome to the Adventure!</h2>
+      <p>
+        Your goal: Collect coins, avoid traps, and reach the finish!<br/>
+        Use the on-screen controls to move and jump.<br/>
+        Good luck!
+      </p>
+      <button id="continueBtn" class="big-retro-btn">CONTINUE</button>
+    </div>
+  </div>
+  <!-- Game Container -->
+  <div id="gameContainer" style="display:none;">
     <canvas id="gameCanvas"></canvas>
     <div id="controls">
       <button class="control-btn left" aria-label="Move Left">&#x25C0;</button>
@@ -18,4 +37,4 @@
   </div>
   <script src="script.js"></script>
 </body>
-</html>
+        </html>
