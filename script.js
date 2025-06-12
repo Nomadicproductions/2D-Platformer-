@@ -1,3 +1,27 @@
+// --- Start/Intro/Game Page Switching ---
+window.addEventListener("DOMContentLoaded", function() {
+  const startPage = document.getElementById('startPage');
+  const introPage = document.getElementById('introPage');
+  const gameContainer = document.getElementById('gameContainer');
+  const startBtn = document.getElementById('startBtn');
+  const continueBtn = document.getElementById('continueBtn');
+
+  // Only show start page on load
+  startPage.style.display = 'flex';
+  introPage.style.display = 'none';
+  gameContainer.style.display = 'none';
+
+  startBtn.onclick = function() {
+    startPage.style.display = 'none';
+    introPage.style.display = 'flex';
+  };
+  continueBtn.onclick = function() {
+    introPage.style.display = 'none';
+    gameContainer.style.display = 'flex';
+    // Call your fitGameCanvas function to size everything correctly on game start
+    if (typeof fitGameCanvas === 'function') fitGameCanvas();
+  };
+});
 // ==== DEVICE-OPTIMIZED CANVAS SIZING, MOBILE/TABLET PORTRAIT FOCUS ====
 
 function getDeviceType() {
