@@ -20,15 +20,77 @@ body, #gameContainer {
   position: relative;
 }
 
-#gameContainer {
-  width: 100vw;
-  height: 100vh;
+/* Fullscreen overlays for start and intro */
+.fullscreen-overlay {
+  position: fixed;
+  z-index: 1000;
+  left: 0; top: 0; right: 0; bottom: 0;
+  width: 100vw; height: 100vh;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: center;
+  overflow: hidden;
+}
+.bg-image {
+  position: absolute;
+  left: 0; top: 0;
+  width: 100vw; height: 100vh;
+  object-fit: cover;
+  z-index: 1;
+  pointer-events: none;
 }
 
+/* Retro Start/Continue Button Style */
+.big-retro-btn {
+  z-index: 2;
+  padding: 2em 3em;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 2.2em;
+  color: #fff;
+  background: #111;
+  border: 6px solid #41ff80;
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  margin: 2em 0 0 0;
+  cursor: pointer;
+  text-shadow: 2px 2px 0 #41ff80;
+  letter-spacing: 2px;
+  transition: background 0.2s;
+}
+.big-retro-btn:hover, .big-retro-btn:active {
+  background: #222;
+}
+
+/* Intro page text box styling */
+.introText {
+  position: relative;
+  z-index: 2;
+  color: #fff;
+  text-align: center;
+  background: rgba(0,0,0,0.6);
+  padding: 2em;
+  border-radius: 20px;
+  margin-top: 8vh;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 1.2em;
+  max-width: 90vw;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+}
+.introText h2 {
+  margin-bottom: 1em;
+  color: #41ff80;
+  font-size: 1.5em;
+  text-shadow: 2px 2px 0 #111;
+}
+.introText p {
+  margin-bottom: 2em;
+}
+
+/* Hide debug if present */
+#debug { display: none !important; }
+
+/* Game canvas and controls (same as before) */
 #gameCanvas {
   display: block;
   background: #222;
@@ -36,10 +98,8 @@ body, #gameContainer {
   border-radius: 18px;
   box-sizing: border-box;
   margin: 0 auto;
-  /* canvas size handled in js */
 }
 
-/* Controls at the bottom, large and spanning width */
 #controls {
   position: fixed;
   left: 0;
@@ -58,7 +118,6 @@ body, #gameContainer {
   pointer-events: none;
 }
 
-/* Big, responsive buttons for mobile/tablet portrait */
 .control-btn {
   background-color: #222;
   color: white;
@@ -87,12 +146,7 @@ body, #gameContainer {
   letter-spacing: 1.5px;
 }
 
-/* Remove debug display */
-#debug {
-  display: none !important;
-}
-
-/* MOBILE PORTRAIT: lock to portrait, buttons tall, canvas fills above controls */
+/* Responsive tweaks as before... */
 @media (max-width: 600px) and (orientation: portrait) {
   #controls {
     height: 20vh;
@@ -113,8 +167,6 @@ body, #gameContainer {
     margin-bottom: 1vh;
   }
 }
-
-/* TABLET PORTRAIT: lock to portrait, buttons tall, canvas fills above controls, moved down a bit */
 @media (min-width: 601px) and (max-width: 1000px) and (orientation: portrait) {
   #controls {
     height: 17vh;
@@ -135,8 +187,6 @@ body, #gameContainer {
     margin-bottom: 2vh;
   }
 }
-
-/* DESKTOP/LANDSCAPE: keep previous, but for completeness (not the focus) */
 @media (min-width: 1001px) {
   #controls {
     height: 12vh;
@@ -156,4 +206,4 @@ body, #gameContainer {
     margin-top: 4vh;
     margin-bottom: 0;
   }
-    }
+  }
