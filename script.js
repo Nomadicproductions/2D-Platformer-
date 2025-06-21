@@ -98,6 +98,14 @@ const tileSize = 32;
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// --- SOUND EFFECTS ---
+const sndEnemyHit = new Audio('assets/audio/364929__jofae__game-die.mp3');
+const sndEnemyStomp = new Audio('assets/audio/video-game-bonus-323603.mp3');
+const sndJump = new Audio('assets/audio/pixel-jump-319167.mp3');
+const sndCoin = new Audio('assets/audio/613312__ezzin__coins_1.wav');
+const sndScamCoin = new Audio('assets/audio/wrong-buzzer-6268.mp3');
+const sndLevelUp = new Audio('assets/audio/pixel-level-up-sound-351836.mp3');
+
 document.addEventListener("touchstart", function (e) {
   if (e.touches.length > 1) {
     e.preventDefault();
@@ -585,11 +593,21 @@ document.querySelector('.jump').addEventListener('touchstart', () => {
   if (player.grounded) {
     player.dy = -player.jumpPower;
     player.grounded = false;
+    sndJump.currentTime = 0; sndJump.play();
   }
   tryDismissTrigger('jump');
 });
 
-function collectCoin(coinList, tileChar, inventoryChange) {
+// Optionally add keyboard controls for jump with sound
+document.addEventListener('keydown', function(e) {
+  if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && player.grounded) {
+    player.dy = -player.jumpPower;
+    player.grounded = false;
+    sndJump.currentTime = 0; sndJump.play();
+  }
+});
+
+function collectCoin(coinList, tileChar, inventoryChange, sound) {
   for (let i = 0; i < coinList.length; i++) {
     const coin = coinList[i];
     const coinX = coin.x * tileSize;
@@ -605,6 +623,7 @@ function collectCoin(coinList, tileChar, inventoryChange) {
       coinList.splice(i, 1);
       level[coin.y] = level[coin.y].substring(0, coin.x) + ' ' + level[coin.y].substring(coin.x + 1);
       inventoryChange();
+      if (sound) { sound.currentTime = 0; sound.play(); }
       return true;
     }
   }
@@ -781,13 +800,13 @@ function updatePlayer() {
       if (activeTrigger) break;
     }
   }
-  collectCoin(coins, '$', () => { player.coinCount++; });
+  collectCoin(coins, '$', () => { player.coinCount++; }, sndCoin);
   collectCoin(scamCoins, 'x', () => {
     if (player.coinCount > 0) {
       player.coinCount -= Math.floor(Math.random() * player.coinCount) + 1;
       if (player.coinCount < 0) player.coinCount = 0;
     }
-  });
+  }, sndScamCoin);
   checkFinish();
 }
 function handlePlayerEnemyCollision() {
@@ -812,6 +831,7 @@ function handlePlayerEnemyCollision() {
         enemy.alive = false;
         stompInvulnTimer = 8;
         player.y = enemy.y - player.height - 1;
+        sndEnemyStomp.currentTime = 0; sndEnemyStomp.play();
         return;
       } else {
         fallingThroughAnyPlatform = true;
@@ -819,6 +839,7 @@ function handlePlayerEnemyCollision() {
         let lost = Math.floor(player.coinCount * 0.4);
         player.coinCount -= lost;
         if (player.coinCount < 0) player.coinCount = 0;
+        sndEnemyHit.currentTime = 0; sndEnemyHit.play();
         return;
       }
     }
@@ -845,6 +866,7 @@ function checkFinish() {
   const px = Math.floor((player.x + player.width / 2) / tileSize);
   const py = Math.floor((player.y + player.height / 2) / tileSize);
   if (level[py] && level[py][px] === 'F') {
+    sndLevelUp.currentTime = 0; sndLevelUp.play();
     if (currentLevel < levels.length - 1) {
       loadLevel(currentLevel + 1);
     } else {
