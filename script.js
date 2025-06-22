@@ -18,12 +18,11 @@ window.addEventListener("DOMContentLoaded", function() {
   continueBtn.onclick = function() {
     introPage.style.display = 'none';
     gameContainer.style.display = 'flex';
-    // Call your fitGameCanvas function to size everything correctly on game start
     if (typeof fitGameCanvas === 'function') fitGameCanvas();
   };
 });
-// ==== DEVICE-OPTIMIZED CANVAS SIZING, MOBILE/TABLET PORTRAIT FOCUS ====
 
+// ==== DEVICE-OPTIMIZED CANVAS SIZING, MOBILE/TABLET PORTRAIT FOCUS ====
 function getDeviceType() {
   const w = window.innerWidth;
   const h = window.innerHeight;
@@ -31,8 +30,6 @@ function getDeviceType() {
   if (w > 600 && w <= 1000) return "tablet";
   return "desktop";
 }
-
-// Your game's desired aspect ratio (show more level: 960/540 is a bit more zoomed out than before)
 const GAME_ASPECT = 960 / 540;
 
 function fitGameCanvas() {
@@ -42,7 +39,6 @@ function fitGameCanvas() {
   const portrait = window.innerHeight > window.innerWidth;
 
   if (!portrait) {
-    // Hide canvas and controls in landscape
     canvas.style.display = "none";
     controls.style.display = "none";
     document.body.style.background = "#222";
@@ -53,29 +49,23 @@ function fitGameCanvas() {
     document.body.style.background = "#87CEFA";
   }
 
-  // Get the height of the controls
   const controlsHeight = controls.offsetHeight || (device === "mobile" ? window.innerHeight * 0.20 : window.innerHeight * 0.17);
-
-  // Calculate available height and width for canvas
-  const availH = window.innerHeight - controlsHeight - 16; // -16 for some margin
+  const availH = window.innerHeight - controlsHeight - 16;
   const availW = window.innerWidth;
   let targetW = availW;
   let targetH = availH;
 
-  // Fit aspect ratio (zoom out a bit more)
   if (targetW / targetH > GAME_ASPECT) {
     targetW = Math.round(targetH * GAME_ASPECT);
   } else {
     targetH = Math.round(targetW / GAME_ASPECT);
   }
 
-  // Center canvas horizontally
   canvas.style.width = targetW + "px";
   canvas.style.height = targetH + "px";
   canvas.width = 960;
   canvas.height = 540;
 
-  // Center vertically with margin at top (looks better)
   if (device === "mobile") {
     canvas.style.marginTop = "3vh";
     canvas.style.marginBottom = "1vh";
@@ -105,6 +95,12 @@ const sndJump = new Audio('assets/audio/pixel-jump-319167.mp3');
 const sndCoin = new Audio('assets/audio/613312__ezzin__coins_1.wav');
 const sndScamCoin = new Audio('assets/audio/wrong-buzzer-6268.mp3');
 const sndLevelUp = new Audio('assets/audio/pixel-level-up-sound-351836.mp3');
+
+// --- COIN/SCAM COIN GRAPHICS ---
+const coinImg = new Image();
+coinImg.src = 'assets/file_00000000978c61f7a3829e2af5cfbdd2 (1).png';
+const scamCoinImg = new Image();
+scamCoinImg.src = 'assets/file_000000002028622fa6a883704e7d77d0.png';
 
 document.addEventListener("touchstart", function (e) {
   if (e.touches.length > 1) {
@@ -597,8 +593,6 @@ document.querySelector('.jump').addEventListener('touchstart', () => {
   }
   tryDismissTrigger('jump');
 });
-
-// Optionally add keyboard controls for jump with sound
 document.addEventListener('keydown', function(e) {
   if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && player.grounded) {
     player.dy = -player.jumpPower;
@@ -929,9 +923,28 @@ function drawLevel() {
         );
         ctx.restore();
       } else if (char !== ' ') {
-        let color = tileColors[char] || '#000';
-        ctx.fillStyle = color;
-        ctx.fillRect(x * tileSize - cameraX, y * tileSize - cameraY, tileSize, tileSize);
+        // Draw coins and scam coins using images
+        if (char === '$') {
+          if (coinImg.complete) {
+            ctx.drawImage(coinImg, x * tileSize - cameraX, y * tileSize - cameraY, tileSize, tileSize);
+          } else {
+            coinImg.onload = () => {
+              ctx.drawImage(coinImg, x * tileSize - cameraX, y * tileSize - cameraY, tileSize, tileSize);
+            }
+          }
+        } else if (char === 'x') {
+          if (scamCoinImg.complete) {
+            ctx.drawImage(scamCoinImg, x * tileSize - cameraX, y * tileSize - cameraY, tileSize, tileSize);
+          } else {
+            scamCoinImg.onload = () => {
+              ctx.drawImage(scamCoinImg, x * tileSize - cameraX, y * tileSize - cameraY, tileSize, tileSize);
+            }
+          }
+        } else {
+          let color = tileColors[char] || '#000';
+          ctx.fillStyle = color;
+          ctx.fillRect(x * tileSize - cameraX, y * tileSize - cameraY, tileSize, tileSize);
+        }
         x++;
       } else {
         x++;
