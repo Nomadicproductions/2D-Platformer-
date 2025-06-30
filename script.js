@@ -18,6 +18,9 @@ window.addEventListener("DOMContentLoaded", function() {
   continueBtn.onclick = function() {
     introPage.style.display = 'none';
     gameContainer.style.display = 'flex';
+    // Only now controls & canvas are visible, so initialize inventory UI
+    setupCoinInventoryDisplay();
+    updateCoinInventoryDisplay(player.coinCount);
     if (typeof fitGameCanvas === 'function') fitGameCanvas();
   };
 });
@@ -88,6 +91,7 @@ function setupCoinInventoryDisplay() {
   // Only run once
   if (document.getElementById("coinInventoryDisplay")) return;
   const controls = document.getElementById("controls");
+  if (!controls) return; // Don't run if controls not present
   const inventoryDiv = document.createElement("div");
   inventoryDiv.id = "coinInventoryDisplay";
   inventoryDiv.style.fontSize = "22px";
@@ -333,7 +337,7 @@ function scanTriggers() {
   for (let y = 0; y < level.length; y++) {
     for (let x = 0; x < level[y].length; x++) {
       let char = level[y][x];
-      if (triggerSymbols.includes(char)) triggers[symbol].push({x, y});
+      if (triggerSymbols.includes(char)) triggers[char].push({x, y});
     }
   }
 }
@@ -1027,7 +1031,18 @@ function gameLoop() {
 }
 
 // --- COIN INVENTORY UI INIT ---
-setupCoinInventoryDisplay();
-updateCoinInventoryDisplay(player.coinCount);
+// (Do not call here! Only call after controls exist, in continueBtn.onclick above)
 
-gameLoop();
+//gameLoop(); // <-- Move this call to after continueBtn.onclick if you want to start on continue
+
+// Ensure gameLoop starts as soon as the DOM and controls are ready.
+window.addEventListener("DOMContentLoaded", function() {
+  // Optionally, start gameLoop immediately, or after continue is pressed.
+  // If you want intro/start, comment out next line.
+  // gameLoop();
+});
+
+// If you want the game to start only after continue:
+continueBtn && continueBtn.addEventListener('click', function() {
+  requestAnimationFrame(gameLoop);
+});
