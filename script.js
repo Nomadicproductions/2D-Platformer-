@@ -82,6 +82,31 @@ window.addEventListener("resize", fitGameCanvas);
 window.addEventListener("orientationchange", fitGameCanvas);
 window.addEventListener("load", fitGameCanvas);
 
+// ==== COIN INVENTORY UI ====
+// Adds a coin inventory above the controls, updates when coin count changes.
+function setupCoinInventoryDisplay() {
+  // Only run once
+  if (document.getElementById("coinInventoryDisplay")) return;
+  const controls = document.getElementById("controls");
+  const inventoryDiv = document.createElement("div");
+  inventoryDiv.id = "coinInventoryDisplay";
+  inventoryDiv.style.fontSize = "22px";
+  inventoryDiv.style.fontWeight = "bold";
+  inventoryDiv.style.fontFamily = "monospace";
+  inventoryDiv.style.color = "#ffb800";
+  inventoryDiv.style.textShadow = "1px 1px 3px #222";
+  inventoryDiv.style.display = "flex";
+  inventoryDiv.style.alignItems = "center";
+  inventoryDiv.style.justifyContent = "center";
+  inventoryDiv.style.marginBottom = "8px";
+  inventoryDiv.innerHTML = `<img src="assets/file_00000000978c61f7a3829e2af5cfbdd2 (1).png" alt="coin" style="height:1.2em;vertical-align:middle;margin-right:0.5em;"> <span id="coinCountText">0</span>`;
+  controls.parentNode.insertBefore(inventoryDiv, controls);
+}
+function updateCoinInventoryDisplay(count) {
+  const coinCountText = document.getElementById("coinCountText");
+  if (coinCountText) coinCountText.textContent = count;
+}
+
 // ==== GAME CODE ====
 
 const tileSize = 32;
@@ -308,7 +333,7 @@ function scanTriggers() {
   for (let y = 0; y < level.length; y++) {
     for (let x = 0; x < level[y].length; x++) {
       let char = level[y][x];
-      if (triggerSymbols.includes(char)) triggers[char].push({x, y});
+      if (triggerSymbols.includes(char)) triggers[symbol].push({x, y});
     }
   }
 }
@@ -561,6 +586,8 @@ function loadLevel(n) {
   fallingThroughAnyPlatform = false;
   fallingThroughUntilY = null;
   stompInvulnTimer = 0;
+  player.coinCount = 0; // Reset coin count on new level
+  updateCoinInventoryDisplay(player.coinCount); // Update inventory UI
 }
 resetPlayerToStart();
 scanCoins();
@@ -601,6 +628,7 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
+// Modified collectCoin to update coin inventory display
 function collectCoin(coinList, tileChar, inventoryChange, sound) {
   for (let i = 0; i < coinList.length; i++) {
     const coin = coinList[i];
@@ -616,13 +644,26 @@ function collectCoin(coinList, tileChar, inventoryChange, sound) {
     ) {
       coinList.splice(i, 1);
       level[coin.y] = level[coin.y].substring(0, coin.x) + ' ' + level[coin.y].substring(coin.x + 1);
+      let before = player.coinCount;
       inventoryChange();
-      if (sound) { sound.currentTime = 0; sound.play(); }
+      // Only play sound if gained or lost coins
+      if (sound && player.coinCount !== before) { sound.currentTime = 0; sound.play(); }
+      updateCoinInventoryDisplay(player.coinCount);
       return true;
     }
   }
   return false;
 }
+
+// Extra scam coin logic for player losing coins (used by enemy and scam coin)
+function loseCoinsRandom(amount) {
+  let lost = Math.min(player.coinCount, amount);
+  player.coinCount -= lost;
+  if (player.coinCount < 0) player.coinCount = 0;
+  updateCoinInventoryDisplay(player.coinCount);
+  return lost;
+}
+
 function updateSpinningState(delta) {
   spinningState.time += delta;
   if (!spinningState.flipping && spinningState.time >= 3000) {
@@ -795,10 +836,13 @@ function updatePlayer() {
     }
   }
   collectCoin(coins, '$', () => { player.coinCount++; }, sndCoin);
+  // When scam coin, lose a random number of coins and update UI
   collectCoin(scamCoins, 'x', () => {
     if (player.coinCount > 0) {
-      player.coinCount -= Math.floor(Math.random() * player.coinCount) + 1;
+      let lost = Math.floor(Math.random() * player.coinCount) + 1;
+      player.coinCount -= lost;
       if (player.coinCount < 0) player.coinCount = 0;
+      updateCoinInventoryDisplay(player.coinCount);
     }
   }, sndScamCoin);
   checkFinish();
@@ -833,6 +877,7 @@ function handlePlayerEnemyCollision() {
         let lost = Math.floor(player.coinCount * 0.4);
         player.coinCount -= lost;
         if (player.coinCount < 0) player.coinCount = 0;
+        updateCoinInventoryDisplay(player.coinCount);
         sndEnemyHit.currentTime = 0; sndEnemyHit.play();
         return;
       }
@@ -980,4 +1025,9 @@ function gameLoop() {
   drawTriggerOverlay();
   requestAnimationFrame(gameLoop);
 }
+
+// --- COIN INVENTORY UI INIT ---
+setupCoinInventoryDisplay();
+updateCoinInventoryDisplay(player.coinCount);
+
 gameLoop();
