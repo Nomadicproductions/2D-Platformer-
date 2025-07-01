@@ -394,6 +394,9 @@ const player = {
   grounded: false, coinCount: 0
 };
 
+// --- Persist player coins across all levels ---
+let globalCoinCount = 0;
+
 let cameraX = 0, cameraY = 0;
 let coins = [], scamCoins = [];
 let stompInvulnTimer = 0;
@@ -577,6 +580,9 @@ function resetPlayerToStart() {
 let currentLevel = 0;
 let level = levels[currentLevel];
 function loadLevel(n) {
+  // Before changing level, save coin count to global coin inventory
+  globalCoinCount = player.coinCount;
+
   currentLevel = n;
   level = levels[currentLevel];
   resetPlayerToStart();
@@ -590,7 +596,8 @@ function loadLevel(n) {
   fallingThroughAnyPlatform = false;
   fallingThroughUntilY = null;
   stompInvulnTimer = 0;
-  player.coinCount = 0; // Reset coin count on new level
+  // Restore coin inventory from globalCoinCount, do NOT reset coins on new level!
+  player.coinCount = globalCoinCount;
   updateCoinInventoryDisplay(player.coinCount); // Update inventory UI
 }
 resetPlayerToStart();
@@ -653,6 +660,8 @@ function collectCoin(coinList, tileChar, inventoryChange, sound) {
       // Only play sound if gained or lost coins
       if (sound && player.coinCount !== before) { sound.currentTime = 0; sound.play(); }
       updateCoinInventoryDisplay(player.coinCount);
+      // Also update globalCoinCount after coin count change for persistency!
+      globalCoinCount = player.coinCount;
       return true;
     }
   }
@@ -660,11 +669,26 @@ function collectCoin(coinList, tileChar, inventoryChange, sound) {
 }
 
 // Extra scam coin logic for player losing coins (used by enemy and scam coin)
+// Lose a random number of coins between 1 and 4, but not more than currently collected
+function loseCoinsRandomScam() {
+  if (player.coinCount > 0) {
+    let maxLose = Math.min(4, player.coinCount);
+    let lost = Math.floor(Math.random() * maxLose) + 1;
+    player.coinCount -= lost;
+    if (player.coinCount < 0) player.coinCount = 0;
+    updateCoinInventoryDisplay(player.coinCount);
+    // Also update globalCoinCount so it's always in sync
+    globalCoinCount = player.coinCount;
+  }
+}
+
+// Original loseCoinsRandom for enemy collision: lose 40%
 function loseCoinsRandom(amount) {
   let lost = Math.min(player.coinCount, amount);
   player.coinCount -= lost;
   if (player.coinCount < 0) player.coinCount = 0;
   updateCoinInventoryDisplay(player.coinCount);
+  globalCoinCount = player.coinCount;
   return lost;
 }
 
@@ -840,15 +864,8 @@ function updatePlayer() {
     }
   }
   collectCoin(coins, '$', () => { player.coinCount++; }, sndCoin);
-  // When scam coin, lose a random number of coins and update UI
-  collectCoin(scamCoins, 'x', () => {
-    if (player.coinCount > 0) {
-      let lost = Math.floor(Math.random() * player.coinCount) + 1;
-      player.coinCount -= lost;
-      if (player.coinCount < 0) player.coinCount = 0;
-      updateCoinInventoryDisplay(player.coinCount);
-    }
-  }, sndScamCoin);
+  // When scam coin, lose a random number of coins (1 to 4 or less if not enough)
+  collectCoin(scamCoins, 'x', loseCoinsRandomScam, sndScamCoin);
   checkFinish();
 }
 function handlePlayerEnemyCollision() {
@@ -882,6 +899,7 @@ function handlePlayerEnemyCollision() {
         player.coinCount -= lost;
         if (player.coinCount < 0) player.coinCount = 0;
         updateCoinInventoryDisplay(player.coinCount);
+        globalCoinCount = player.coinCount;
         sndEnemyHit.currentTime = 0; sndEnemyHit.play();
         return;
       }
